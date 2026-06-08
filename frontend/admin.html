@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin | Nhập sản phẩm thật RainbowForest</title>
+  <meta name="description" content="Trang quản trị Bauhaus để nhập sản phẩm thật, quản lý catalog, payments và notifications cho hệ thống e-commerce microservices." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell admin-shell">
+    <header class="hero admin-hero">
+      <nav class="nav" aria-label="Admin navigation">
+        <a class="brand" href="index.html"><span class="brand-mark">RF</span><span>Admin Console</span></a>
+        <div class="nav-actions">
+          <a class="ghost-btn" href="index.html">Storefront</a>
+          <button id="adminRefreshBtn" class="primary-btn">Refresh data</button>
+        </div>
+      </nav>
+      <section class="hero-grid admin-hero-grid">
+        <div>
+          <p class="eyebrow">ROLE_ADMIN required</p>
+          <h1>Nhập sản phẩm thật</h1>
+          <p class="hero-copy">Tạo catalog thật bằng tên, giá VND, tồn kho và URL ảnh thật. Không còn dữ liệu seed demo.</p>
+        </div>
+        <aside class="status-card">
+          <h2>Session</h2>
+          <p class="muted">Login ở storefront bằng admin / Admin@123456 hoặc dán JWT admin tại đây.</p>
+          <textarea id="adminTokenInput" class="token-box" placeholder="Dán JWT token admin..."></textarea>
+          <button id="saveTokenBtn" class="secondary-btn full">Lưu token</button>
+        </aside>
+      </section>
+    </header>
+
+    <main>
+      <section class="admin-stats" aria-label="Admin metrics">
+        <article class="metric-card"><span>Products</span><strong id="productCount">0</strong></article>
+        <article class="metric-card"><span>Total stock</span><strong id="stockCount">0</strong></article>
+        <article class="metric-card"><span>Payments</span><strong id="paymentCount">0</strong></article>
+        <article class="metric-card"><span>Notifications</span><strong id="notificationCount">0</strong></article>
+      </section>
+
+      <section class="admin-grid">
+        <article class="panel">
+          <p class="eyebrow">Product management</p>
+          <h2>Tạo sản phẩm thật</h2>
+          <form id="productForm" class="admin-form">
+            <label>Tên sản phẩm <input name="productName" required placeholder="Áo khoác Bauhaus" /></label>
+            <label>Category <input name="category" required placeholder="Thời trang" /></label>
+            <label>Giá VND <input name="price" type="number" min="0" step="1000" required placeholder="450000" /></label>
+            <label>Tồn kho <input name="availability" type="number" min="0" required placeholder="20" /></label>
+            <label class="span-2">Image URL <input name="imageUrl" placeholder="https://..." /></label>
+            <label class="span-2">Mô tả <textarea name="discription" placeholder="Mô tả ngắn cho sản phẩm thật"></textarea></label>
+            <button id="createProductBtn" class="primary-btn span-2" type="submit">Tạo sản phẩm thật</button>
+          </form>
+          <pre id="productActionOutput" class="output">Product actions...</pre>
+        </article>
+
+        <article class="panel">
+          <p class="eyebrow">Inventory</p>
+          <h2>Danh sách sản phẩm</h2>
+          <div id="adminProductList" class="admin-list"></div>
+        </article>
+      </section>
+
+      <section class="admin-grid wide">
+        <article class="panel">
+          <p class="eyebrow">Payment service</p>
+          <h2>Payments</h2>
+          <pre id="adminPaymentsOutput" class="output tall">Loading...</pre>
+        </article>
+        <article class="panel">
+          <p class="eyebrow">Notification service</p>
+          <h2>Notifications</h2>
+          <pre id="adminNotificationsOutput" class="output tall">Loading...</pre>
+        </article>
+      </section>
+    </main>
+  </div>
+  <script src="admin.js"></script>
+</body>
+</html>

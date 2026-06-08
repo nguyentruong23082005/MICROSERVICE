@@ -3,6 +3,7 @@ package com.rainbowforest.orderservice.controller;
 import com.rainbowforest.orderservice.domain.Item;
 import com.rainbowforest.orderservice.domain.Order;
 import com.rainbowforest.orderservice.domain.User;
+import com.rainbowforest.orderservice.event.OrderEventPublisher;
 import com.rainbowforest.orderservice.feignclient.UserClient;
 import com.rainbowforest.orderservice.http.header.HeaderGenerator;
 import com.rainbowforest.orderservice.service.CartService;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 public class OrderController {
@@ -28,6 +29,9 @@ public class OrderController {
 
     @Autowired
     private CartService cartService;
+
+    @Autowired
+    private OrderEventPublisher orderEventPublisher;
 
     @Autowired
     private HeaderGenerator headerGenerator;
@@ -43,11 +47,12 @@ public class OrderController {
         if(cart != null && user != null) {
         	Order order = this.createOrder(cart, user);
         	try{
-                orderService.saveOrder(order);
+                Order savedOrder = orderService.saveOrder(order);
+                orderEventPublisher.publishOrderCreated(savedOrder);
                 cartService.deleteCart(cartId);
                 return new ResponseEntity<Order>(
-                		order, 
-                		headerGenerator.getHeadersForSuccessPostMethod(request, order.getId()),
+                		savedOrder, 
+                		headerGenerator.getHeadersForSuccessPostMethod(request, savedOrder.getId()),
                 		HttpStatus.CREATED);
             }catch (Exception ex){
                 ex.printStackTrace();
@@ -56,7 +61,7 @@ public class OrderController {
                 		HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
-  
+   
         return new ResponseEntity<Order>(
         		headerGenerator.getHeadersForError(),
         		HttpStatus.NOT_FOUND);

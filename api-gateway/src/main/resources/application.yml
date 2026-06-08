@@ -1,0 +1,73 @@
+server:
+  port: 8900
+
+spring:
+  application:
+    name: api-gateway
+
+  # Redis configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # User Service
+        - id: user-service
+          uri: ${USER_SERVICE_URI:http://localhost:8811}
+          predicates:
+            - Path=/api/accounts/**
+          filters:
+            - StripPrefix=2
+
+        # Product Catalog Service
+        - id: product-catalog-service
+          uri: ${PRODUCT_CATALOG_SERVICE_URI:http://localhost:8812}
+          predicates:
+            - Path=/api/catalog/**
+          filters:
+            - StripPrefix=2
+
+        # Order Service
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/shop/**
+          filters:
+            - StripPrefix=1
+
+        # Payment Service
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - StripPrefix=1
+
+        # Notification Service
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=1
+
+        # Product Recommendation Service
+        - id: product-recommendation-service
+          uri: lb://product-recommendation-service
+          predicates:
+            - Path=/api/review/**
+          filters:
+            - StripPrefix=1
+
+# Eureka client
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka

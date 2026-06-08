@@ -20,16 +20,11 @@ public class ProductController {
 
     @GetMapping (value = "/products")
     public ResponseEntity<List<Product>> getAllProducts(){
-        List<Product> products =  productService.getAllProduct();
-        if(!products.isEmpty()) {
-        	return new ResponseEntity<List<Product>>(
-        			products,
-        			headerGenerator.getHeadersForSuccessGetMethod(),
-        			HttpStatus.OK);
-        }
+        List<Product> products = productService.getAllProduct();
         return new ResponseEntity<List<Product>>(
-        		headerGenerator.getHeadersForError(),
-        		HttpStatus.NOT_FOUND);       
+        		products,
+        		headerGenerator.getHeadersForSuccessGetMethod(),
+        		HttpStatus.OK);       
     }
 
     @GetMapping(value = "/products", params = "category")

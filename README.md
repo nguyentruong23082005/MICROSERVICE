@@ -1,55 +1,221 @@
-# REST Microservices architecture for E-commerce
+# REST Microservices Architecture for E-commerce
 
-> Implementation of a REST Microservices in an E-Commerce with Spring boot, Cloud and multiple modules.                
+Production-ready learning project for an e-commerce system using Spring Boot microservices, API Gateway, Eureka, PostgreSQL, Redis, Kafka and a static frontend.
 
-### Table of contents
+## Architecture
 
-- [Project architecture](#Project-architecture)
-- [Tools and Technologies](#technologies)
-- [Features](#features)
-- [Status](#status)
-- [Contact](#contact)
+```text
+frontend
+  ↓
+api-gateway :8900
+  ├─ user-service :8800            login/register/JWT
+  ├─ product-catalog-service :8801 catalog + inventory consumer
+  ├─ order-service :8802           Redis cart + checkout + order-created producer
+  ├─ product-recommendation-service
+  ├─ payment-service :8815         order-created consumer + payment-completed producer
+  └─ notification-service :8816    payment-completed consumer
 
-### Project architecture
- 
-![micro](https://user-images.githubusercontent.com/50141193/58799788-845b1c00-8606-11e9-924b-1b4c03a9091c.png)
+Kafka topics:
+  order-created → payment-service, product-catalog-service
+  payment-completed → notification-service
+```
 
-### Tools and Technologies
+## Services
 
-- **Java 8**
-- **Spring Boot** - version 2.1.5 RELEASE
-- **Spring Web MVC** - version 5.1.7 RELEASE
-- **Spring SESSION** - version 2.1.6 RELEASE
-- **Spring Cloud - Open Feign** - version 2.1.1 RELEASE
-- **Netflix Zuul** - version 1.3.1 
-- **Netflix Eureka Client/Server** - version 2.1.1
-- **Netflix Ribbon** - version 2.3.0
-- **Redis Client : JEDIS** - version 2.9.3
-- **Spring Data REDIS** - version 2.1.8 RELEASE
-- **Spring Data JPA** - version 2.1.8 RELEASE 
-- **Hibernate** - version 5.0.4 Finale
-- **SQL Database engine** : Microsoft SQL 2016
-- **NOSQL Database engine** : Redis 3.2.100
-- **Maven**
+| Service | Purpose | Port | Gateway route |
+| --- | --- | ---: | --- |
+| Eureka Server | Service discovery | 8761 | - |
+| API Gateway | JWT filter + routing | 8900 | `/api/**` |
+| User Service | Register/login/JWT | 8800 | `/api/accounts/**` |
+| Product Catalog Service | Products/category/inventory | 8801 | `/api/catalog/**` |
+| Order Service | Cart and checkout | 8802 | `/api/shop/**` |
+| Product Recommendation Service | Reviews/recommendations | 8803 | `/api/review/**` |
+| Payment Service | Payment automation | 8815 | `/api/payments/**` |
+| Notification Service | User notifications | 8816 | `/api/notifications/**` |
 
-### Features
+## Tech stack
 
-1. **Administrator :**
+- Java 21
+- Spring Boot 3.2.5
+- Spring Cloud 2023.0.1
+- Spring Cloud Gateway
+- Spring Security + JWT
+- Spring Data JPA + PostgreSQL
+- Redis cart storage
+- Apache Kafka event flow
+- Eureka discovery
+- Static HTML/CSS/JavaScript frontend
 
-   - Users management
-   - Products management
-   - Orders management
-   - Recommendations management
+## Run infrastructure
 
-2. **User** :
+```powershell
+docker compose up -d
+```
 
-   - Registration
-   - Shopping cart (for guest or logged user)
-   - Order
-   - Product recommendation 
-   - Product catalog
-   
-### Status:
+This starts:
 
-**Application status :** BETA 
+- PostgreSQL on `localhost:5434`
+- Redis on `localhost:6379`
+- Kafka on `localhost:9092`
 
+> If PostgreSQL was already initialized before `payments` and `notifications` databases were added, recreate the volume/container or manually create those databases.
+
+## Run services
+
+Open separate PowerShell terminals:
+
+```powershell
+cd C:\e-commerce-microservices\eureka-server
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+```powershell
+cd C:\e-commerce-microservices\user-service
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+```powershell
+cd C:\e-commerce-microservices\product-catalog-service
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+```powershell
+cd C:\e-commerce-microservices\order-service
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+```powershell
+cd C:\e-commerce-microservices\product-recommendation-service
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+```powershell
+cd C:\e-commerce-microservices\payment-service
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+```powershell
+cd C:\e-commerce-microservices\notification-service
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+```powershell
+cd C:\e-commerce-microservices\api-gateway
+.\mvnw.cmd "-Dmaven.test.skip=true" spring-boot:run
+```
+
+## Run frontend
+
+```powershell
+cd C:\e-commerce-microservices\frontend
+python -m http.server 3000
+```
+
+Open `http://localhost:3000`.
+
+## End-to-end test guide
+
+### 1. Check Gateway
+
+```powershell
+Invoke-WebRequest http://localhost:8900/actuator/health
+```
+
+Expected: HTTP 200 if actuator is exposed, or use Eureka UI at `http://localhost:8761` to verify services are registered.
+
+### 2. Register or login
+
+```powershell
+$login = Invoke-RestMethod -Method Post `
+  -Uri http://localhost:8900/api/accounts/login `
+  -ContentType 'application/json' `
+  -Body '{"userName":"admin","password":"admin"}'
+
+$token = $login.token
+$headers = @{ Authorization = "Bearer $token" }
+```
+
+Expected: response contains a JWT token.
+
+### 3. Load products
+
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri http://localhost:8900/api/catalog/products `
+  -Headers $headers
+```
+
+Expected: product list with `imageUrl`, `price`, `availability`, `category`.
+
+### 4. Add product to Redis cart
+
+Use any numeric cart cookie value, for example `1001`:
+
+```powershell
+$cartHeaders = @{ Authorization = "Bearer $token"; Cookie = "1001" }
+
+Invoke-RestMethod -Method Post `
+  -Uri 'http://localhost:8900/api/shop/cart?productId=1&quantity=2' `
+  -Headers $cartHeaders
+```
+
+Expected: cart item is created in Redis.
+
+### 5. Checkout
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri 'http://localhost:8900/api/shop/order/1' `
+  -Headers $cartHeaders
+```
+
+Expected:
+
+- Order is created with status `PAYMENT_EXPECTED`
+- `order-created` Kafka event is published
+- Cart is deleted
+
+### 6. Verify payment automation
+
+Wait a few seconds, then:
+
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri http://localhost:8900/api/payments/payments `
+  -Headers $headers
+```
+
+Expected: payment row with status `COMPLETED` for the order.
+
+### 7. Verify notification automation
+
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri http://localhost:8900/api/notifications/notifications `
+  -Headers $headers
+```
+
+Expected: notification row with status `SENT`.
+
+### 8. Verify inventory reduction
+
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri http://localhost:8900/api/catalog/products `
+  -Headers $headers
+```
+
+Expected: purchased product `availability` decreases by checkout quantity.
+
+## Success criteria
+
+The project meets the requested completion requirements when:
+
+- All services compile successfully on Java 21 / Spring Boot 3.2.5.
+- API Gateway authenticates protected routes using JWT.
+- Products include image support and seed data.
+- Checkout creates an order and publishes `order-created` to Kafka.
+- Payment service consumes `order-created` and creates completed payments.
+- Notification service consumes `payment-completed` and creates notifications.
+- Catalog service consumes `order-created` and reduces inventory.
+- Frontend can display products, login, preview cart and inspect payments/notifications.

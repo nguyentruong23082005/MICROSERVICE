@@ -1,8 +1,8 @@
 package com.rainbowforest.productcatalogservice.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import javax.persistence.*;
-import javax.validation.constraints.NotNull;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Entity
@@ -32,6 +32,9 @@ public class Product {
     @Column (name = "availability")
     @NotNull
     private int availability;
+
+    @Column (name = "image_url", length = 500)
+    private String imageUrl;
 
 	public Product() {
 
@@ -83,5 +86,13 @@ public class Product {
 
 	public void setAvailability(int availability) {
 		this.availability = availability;
-	} 
+	}
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
 }

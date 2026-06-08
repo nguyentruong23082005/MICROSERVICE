@@ -1,0 +1,19 @@
+# AI Agent directories
+.agent/
+.planning/
+
+# Build and package manager folders
+**/target/
+**/node_modules/
+**/dist/
+**/build/
+
+# IDE settings
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Log files
+*.log

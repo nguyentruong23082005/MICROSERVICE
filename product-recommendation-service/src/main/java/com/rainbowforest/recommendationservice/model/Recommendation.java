@@ -1,7 +1,7 @@
 package com.rainbowforest.recommendationservice.model;
 
 import lombok.NoArgsConstructor;
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table (name = "recommendation")
