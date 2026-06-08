@@ -2,6 +2,10 @@
 .agent/
 .planning/
 
+# Project-specific ignored files
+giaodienmau.md
+init.sql
+
 # Build and package manager folders
 **/target/
 **/node_modules/
