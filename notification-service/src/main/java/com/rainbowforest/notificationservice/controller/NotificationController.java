@@ -25,4 +25,9 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> getNotificationsByUser(@PathVariable Long userId) {
         return ResponseEntity.ok(notificationService.getNotificationsByUser(userId));
     }
+
+    @GetMapping("/admin")
+    public ResponseEntity<List<Notification>> getAdminNotifications() {
+        return ResponseEntity.ok(notificationService.getAdminNotifications());
+    }
 }

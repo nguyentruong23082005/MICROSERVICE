@@ -1,12 +1,14 @@
 package com.rainbowforest.notificationservice.repository;
 
 import com.rainbowforest.notificationservice.domain.Notification;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
+import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 
-@Repository
-public interface NotificationRepository extends JpaRepository<Notification, Long> {
+public interface NotificationRepository extends MongoRepository<Notification, String> {
+
     List<Notification> findAllByUserId(Long userId);
+
+    List<Notification> findAllByType(String type);
+
+    List<Notification> findAllByOrderId(Long orderId);
 }
