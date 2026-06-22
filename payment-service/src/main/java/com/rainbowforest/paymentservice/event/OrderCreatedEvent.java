@@ -11,6 +11,7 @@ public class OrderCreatedEvent {
     private String status;
     private LocalDate orderedDate;
     private List<OrderItemEvent> items;
+    private Boolean forceFailure = false;
 
     public Long getOrderId() { return orderId; }
     public void setOrderId(Long orderId) { this.orderId = orderId; }
@@ -24,4 +25,6 @@ public class OrderCreatedEvent {
     public void setOrderedDate(LocalDate orderedDate) { this.orderedDate = orderedDate; }
     public List<OrderItemEvent> getItems() { return items; }
     public void setItems(List<OrderItemEvent> items) { this.items = items; }
+    public Boolean getForceFailure() { return forceFailure; }
+    public void setForceFailure(Boolean forceFailure) { this.forceFailure = forceFailure; }
 }

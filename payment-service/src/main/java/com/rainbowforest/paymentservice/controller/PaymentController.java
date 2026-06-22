@@ -29,4 +29,9 @@ public class PaymentController {
     public ResponseEntity<List<Payment>> getPaymentsByOrderId(@PathVariable Long orderId) {
         return ResponseEntity.ok(paymentService.getPaymentsByOrderId(orderId));
     }
+
+    @GetMapping("/revenue")
+    public ResponseEntity<com.rainbowforest.paymentservice.dto.RevenueStatisticsResponse> getRevenue() {
+        return ResponseEntity.ok(paymentService.getRevenueStatistics());
+    }
 }
