@@ -33,11 +33,6 @@ public class WebSecurityConfig {
                                 "/api/accounts/registration",
                                 "/actuator/health"
                         ).permitAll()
-                        // Lab 2: cho phép test Saga, Redis, MongoDB không cần JWT
-                        .pathMatchers("/api/accounts/users/**").permitAll()
-                        .pathMatchers("/api/shop/**").permitAll()
-                        .pathMatchers("/api/payments/**").permitAll()
-                        .pathMatchers("/api/notifications/**").permitAll()
                         .pathMatchers("/api/catalog/admin/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers("/api/catalog/products/**").permitAll()
                         .anyExchange().authenticated()
