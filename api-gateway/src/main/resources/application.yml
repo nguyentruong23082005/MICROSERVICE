@@ -36,15 +36,15 @@ spring:
 
         # Order Service
         - id: order-service
-          uri: lb://order-service
+          uri: http://localhost:8813
           predicates:
             - Path=/api/shop/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
 
         # Payment Service
         - id: payment-service
-          uri: lb://payment-service
+          uri: http://localhost:8815
           predicates:
             - Path=/api/payments/**
           filters:
@@ -52,7 +52,7 @@ spring:
 
         # Notification Service
         - id: notification-service
-          uri: lb://notification-service
+          uri: http://localhost:8816
           predicates:
             - Path=/api/notifications/**
           filters:
@@ -60,7 +60,7 @@ spring:
 
         # Product Recommendation Service
         - id: product-recommendation-service
-          uri: lb://product-recommendation-service
+          uri: http://localhost:8814
           predicates:
             - Path=/api/review/**
           filters:

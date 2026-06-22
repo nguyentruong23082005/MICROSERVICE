@@ -11,6 +11,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
+import org.springframework.http.HttpMethod;
+
 import java.util.Arrays;
 
 @Configuration
@@ -25,11 +27,17 @@ public class WebSecurityConfig {
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers(
                                 "/api/accounts/login",
                                 "/api/accounts/registration",
                                 "/actuator/health"
                         ).permitAll()
+                        // Lab 2: cho phép test Saga, Redis, MongoDB không cần JWT
+                        .pathMatchers("/api/accounts/users/**").permitAll()
+                        .pathMatchers("/api/shop/**").permitAll()
+                        .pathMatchers("/api/payments/**").permitAll()
+                        .pathMatchers("/api/notifications/**").permitAll()
                         .pathMatchers("/api/catalog/admin/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers("/api/catalog/products/**").permitAll()
                         .anyExchange().authenticated()
@@ -41,7 +49,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:4200"));
+        corsConfig.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:4200", "http://localhost:5173"));
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         corsConfig.setAllowedHeaders(Arrays.asList("*"));
         corsConfig.setAllowCredentials(true);

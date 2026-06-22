@@ -34,8 +34,7 @@ public class JwtAuthenticationFilter implements WebFilter {
         }
 
         if (!authHeader.startsWith("Bearer ")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            return chain.filter(exchange);
         }
 
         String token = authHeader.substring(7);
