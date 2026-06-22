@@ -25,6 +25,9 @@ public class Order {
     @Column (name = "total")
     private BigDecimal total;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @ManyToMany (cascade = CascadeType.ALL)
     @JoinTable (name = "cart" , joinColumns = @JoinColumn(name = "order_id"), inverseJoinColumns = @JoinColumn (name = "item_id"))
     private List<Item> items;
@@ -83,5 +86,13 @@ public class Order {
 
 	public void setUser(User user) {
 		this.user = user;
+	}
+
+	public String getPhoneNumber() {
+		return phoneNumber;
+	}
+
+	public void setPhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber;
 	}
 }

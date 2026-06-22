@@ -1,33 +1,25 @@
 package com.rainbowforest.orderservice.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
-import java.util.List;
 
-@Entity
-@Table (name = "products")
+/**
+ * DTO đại diện cho thông tin sản phẩm nhận từ product-catalog-service qua OpenFeign.
+ * Không phải JPA entity — không lưu vào database của order-service.
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Product {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @JsonIgnore
-    private Long productId;
-
-    @Transient
     private Long id;
-
-    @Column (name = "product_name")
-    @NotNull
     private String productName;
-    @Column (name = "price")
-    @NotNull
     private BigDecimal price;
+    private String discription;
+    private String category;
+    private int availability;
+    private String imageUrl;
 
-    @OneToMany (mappedBy = "product", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<Item> items;
+    public Product() {
+    }
 
     public Long getId() {
         return id;
@@ -53,11 +45,35 @@ public class Product {
         this.price = price;
     }
 
-    public List<Item> getItems() {
-        return items;
+    public String getDiscription() {
+        return discription;
     }
 
-    public void setItems(List<Item> items) {
-        this.items = items;
+    public void setDiscription(String discription) {
+        this.discription = discription;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public int getAvailability() {
+        return availability;
+    }
+
+    public void setAvailability(int availability) {
+        this.availability = availability;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }

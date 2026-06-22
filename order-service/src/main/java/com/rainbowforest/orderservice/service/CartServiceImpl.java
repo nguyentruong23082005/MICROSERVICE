@@ -33,11 +33,12 @@ public class CartServiceImpl implements CartService {
     @Override
     public void changeItemQuantity(String cartId, Long productId, Integer quantity) {
         List<Item> cart = (List)cartRedisRepository.getCart(cartId, Item.class);
-        for(Item item : cart){
-            if((item.getProduct().getId()).equals(productId)){
+        for (Item item : cart) {
+            if (productId.equals(item.getProductId())) {
                 cartRedisRepository.deleteItemFromCart(cartId, item);
                 item.setQuantity(quantity);
-                item.setSubTotal(CartUtilities.getSubTotalForItem(item.getProduct(),quantity));
+                // Tính lại subtotal dùng productPrice đã denormalize
+                item.setSubTotal(item.getProductPrice().multiply(java.math.BigDecimal.valueOf(quantity)));
                 cartRedisRepository.addItemToCart(cartId, item);
             }
         }
@@ -46,8 +47,8 @@ public class CartServiceImpl implements CartService {
     @Override
     public void deleteItemFromCart(String cartId, Long productId) {
         List<Item> cart = (List) cartRedisRepository.getCart(cartId, Item.class);
-        for(Item item : cart){
-            if((item.getProduct().getId()).equals(productId)){
+        for (Item item : cart) {
+            if (productId.equals(item.getProductId())) {
                 cartRedisRepository.deleteItemFromCart(cartId, item);
             }
         }
@@ -56,8 +57,8 @@ public class CartServiceImpl implements CartService {
     @Override
     public boolean checkIfItemIsExist(String cartId, Long productId) {
         List<Item> cart = (List) cartRedisRepository.getCart(cartId, Item.class);
-        for(Item item : cart){
-            if((item.getProduct().getId()).equals(productId)){
+        for (Item item : cart) {
+            if (productId.equals(item.getProductId())) {
                 return true;
             }
         }

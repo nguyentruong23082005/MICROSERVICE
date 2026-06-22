@@ -21,18 +21,18 @@ public class OrderEventPublisher {
         this.orderCreatedTopic = orderCreatedTopic;
     }
 
-    public void publishOrderCreated(Order order) {
-        OrderCreatedEvent event = toEvent(order);
+    public void publishOrderCreated(Order order, boolean forceFailure) {
+        OrderCreatedEvent event = toEvent(order, forceFailure);
         kafkaTemplate.send(orderCreatedTopic, String.valueOf(order.getId()), event);
     }
 
-    private OrderCreatedEvent toEvent(Order order) {
+    private OrderCreatedEvent toEvent(Order order, boolean forceFailure) {
         Long userId = order.getUser() == null ? null : order.getUser().getId();
         List<OrderItemEvent> items = order.getItems() == null
                 ? List.of()
                 : order.getItems().stream().map(this::toItemEvent).toList();
 
-        return new OrderCreatedEvent(
+        OrderCreatedEvent event = new OrderCreatedEvent(
                 order.getId(),
                 userId,
                 order.getTotal(),
@@ -40,11 +40,13 @@ public class OrderEventPublisher {
                 order.getOrderedDate(),
                 items
         );
+        event.setForceFailure(forceFailure);
+        return event;
     }
 
     private OrderItemEvent toItemEvent(Item item) {
-        Long productId = item.getProduct() == null ? null : item.getProduct().getId();
-        String productName = item.getProduct() == null ? null : item.getProduct().getProductName();
+        Long productId = item.getProductId();
+        String productName = item.getProductName();
         return new OrderItemEvent(productId, productName, item.getQuantity(), item.getSubTotal());
     }
 }

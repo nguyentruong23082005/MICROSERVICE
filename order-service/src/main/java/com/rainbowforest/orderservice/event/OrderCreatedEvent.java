@@ -12,6 +12,7 @@ public class OrderCreatedEvent {
     private String status;
     private LocalDate orderedDate;
     private List<OrderItemEvent> items;
+    private Boolean forceFailure = false;
 
     public OrderCreatedEvent() {
     }
@@ -71,5 +72,13 @@ public class OrderCreatedEvent {
 
     public void setItems(List<OrderItemEvent> items) {
         this.items = items;
+    }
+
+    public Boolean getForceFailure() {
+        return forceFailure;
+    }
+
+    public void setForceFailure(Boolean forceFailure) {
+        this.forceFailure = forceFailure;
     }
 }
