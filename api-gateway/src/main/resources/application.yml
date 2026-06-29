@@ -71,3 +71,14 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka
+
+# Springdoc OpenAPI Aggregation configuration
+springdoc:
+  swagger-ui:
+    urls:
+      - name: User Service
+        url: /api/accounts/v3/api-docs
+      - name: Product Catalog Service
+        url: /api/catalog/v3/api-docs
+      - name: Order Service
+        url: /api/shop/v3/api-docs
