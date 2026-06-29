@@ -6,6 +6,8 @@ import com.rainbowforest.productcatalogservice.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -21,6 +23,13 @@ public class AdminProductController {
 
     @PostMapping(value = "/products")
     private ResponseEntity<Product> addProduct(@RequestBody Product product, HttpServletRequest request){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
     	if(product != null) {
     		try {
     			productService.addProduct(product);
@@ -41,7 +50,14 @@ public class AdminProductController {
     }
     
     @DeleteMapping(value = "/products/{id}")
-    private ResponseEntity<Void> deleteProduct(@PathVariable("id") Long id){
+    private ResponseEntity<Void> deleteProduct(@PathVariable("id") Long id, HttpServletRequest request){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
     	Product product = productService.getProductById(id);
     	if(product != null) {
     		try {

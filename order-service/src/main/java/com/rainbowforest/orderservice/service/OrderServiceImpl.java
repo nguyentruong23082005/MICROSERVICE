@@ -33,4 +33,9 @@ public class OrderServiceImpl implements OrderService {
                 () -> log.warn("[SAGA] Order #{} not found when updating status to {}", orderId, status)
         );
     }
+
+    @Override
+    public Order getOrderById(Long orderId) {
+        return orderRepository.findById(orderId).orElse(null);
+    }
 }

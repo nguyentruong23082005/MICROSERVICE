@@ -7,6 +7,7 @@ import com.rainbowforest.orderservice.dto.OrderResponse;
 import com.rainbowforest.orderservice.event.OrderEventPublisher;
 import com.rainbowforest.orderservice.feignclient.UserClient;
 import com.rainbowforest.orderservice.http.header.HeaderGenerator;
+import com.rainbowforest.orderservice.repository.UserRepository;
 import com.rainbowforest.orderservice.service.CartService;
 import com.rainbowforest.orderservice.service.OrderService;
 import com.rainbowforest.orderservice.utilities.OrderUtilities;
@@ -26,6 +27,38 @@ public class OrderController {
     @Autowired private CartService cartService;
     @Autowired private OrderEventPublisher orderEventPublisher;
     @Autowired private HeaderGenerator headerGenerator;
+    @Autowired private UserRepository userRepository;
+
+    /**
+     * Lấy thông tin đơn hàng theo orderId (Chỉ ADMIN hoặc chủ đơn hàng mới có quyền xem).
+     */
+    @GetMapping(value = "/order/{orderId}")
+    public ResponseEntity<OrderResponse> getOrderById(
+            @PathVariable("orderId") Long orderId,
+            HttpServletRequest request) {
+
+        String currentUserIdStr = request.getHeader("X-User-Id");
+        String currentUserRoles = request.getHeader("X-User-Roles");
+        if (currentUserIdStr == null || currentUserIdStr.isBlank()) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        Long currentUserId = Long.parseLong(currentUserIdStr);
+        boolean isAdmin = currentUserRoles != null && currentUserRoles.contains("ROLE_ADMIN");
+
+        Order order = orderService.getOrderById(orderId);
+        if (order == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        // Kiểm tra quyền sở hữu bằng ID trực tiếp
+        boolean isOwner = order.getUser() != null && order.getUser().getId().equals(currentUserId);
+        if (!isOwner && !isAdmin) {
+            // Trả về 404 để ẩn giấu sự tồn tại của resource (Enumeration Attack mitigation)
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        return new ResponseEntity<>(OrderResponse.from(order), HttpStatus.OK);
+    }
 
     /**
      * Đặt hàng với cookie cartId.
@@ -60,16 +93,33 @@ public class OrderController {
     private ResponseEntity<OrderResponse> processOrder(Long userId, String cartId,
                                                         boolean forceFailure,
                                                         HttpServletRequest request) {
+        // Kiểm tra tính hợp lệ: Chỉ USER tự đặt cho mình hoặc ADMIN đặt cho USER
+        String currentUserIdStr = request.getHeader("X-User-Id");
+        String currentUserRoles = request.getHeader("X-User-Roles");
+        if (currentUserIdStr == null || currentUserIdStr.isBlank()) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        Long currentUserId = Long.parseLong(currentUserIdStr);
+        boolean isAdmin = currentUserRoles != null && currentUserRoles.contains("ROLE_ADMIN");
+
+        if (!currentUserId.equals(userId) && !isAdmin) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
         List<Item> cart = cartService.getAllItemsFromCart(cartId);
         User user = userClient.getUserById(userId);
 
         if (cart != null && !cart.isEmpty() && user != null) {
             try {
-                // Snapshot phoneNumber trước khi set id=null
-                String phoneSnapshot = user.getPhoneNumber();
-                user.setId(null);
+                // Tìm kiếm người dùng trong DB cục bộ trước
+                User localUser = userRepository.findById(userId).orElse(null);
+                if (localUser == null) {
+                    // Lưu mới với ID gốc
+                    localUser = userRepository.save(user);
+                }
 
-                Order order = createOrder(cart, user, phoneSnapshot);
+                String phoneSnapshot = user.getPhoneNumber();
+                Order order = createOrder(cart, localUser, phoneSnapshot);
                 Order savedOrder = orderService.saveOrder(order);
                 orderEventPublisher.publishOrderCreated(savedOrder, forceFailure);
                 cartService.deleteCart(cartId);
@@ -95,7 +145,7 @@ public class OrderController {
         order.setTotal(OrderUtilities.countTotalPrice(cart));
         order.setOrderedDate(LocalDate.now());
         order.setStatus("PAYMENT_EXPECTED");
-        order.setPhoneNumber(phoneNumber); // Snapshot SĐT tại thời điểm đặt hàng
+        order.setPhoneNumber(phoneNumber);
         return order;
     }
 }

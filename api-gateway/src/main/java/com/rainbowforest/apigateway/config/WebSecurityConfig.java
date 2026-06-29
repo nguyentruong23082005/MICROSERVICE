@@ -29,9 +29,13 @@ public class WebSecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers(
-                                "/api/accounts/login",
-                                "/api/accounts/registration",
-                                "/actuator/health"
+                                "/api/accounts/auth/login",
+                                "/api/accounts/auth/registration",
+                                "/api/accounts/auth/refresh",
+                                "/actuator/health",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
                         .pathMatchers("/api/catalog/admin/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers("/api/catalog/products/**").permitAll()
