@@ -35,7 +35,8 @@ public class WebSecurityConfig {
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/webjars/**"
                         ).permitAll()
                         .pathMatchers("/api/catalog/admin/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers("/api/catalog/products/**").permitAll()
