@@ -36,7 +36,9 @@ public class WebSecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/webjars/**"
+                                "/webjars/**",
+                                "/api/*/v3/api-docs",
+                                "/api/*/v3/api-docs/**"
                         ).permitAll()
                         .pathMatchers("/api/catalog/admin/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers("/api/catalog/products/**").permitAll()
