@@ -113,7 +113,10 @@ class OrderControllerTest {
         when(orderService.saveOrder(any(Order.class))).thenReturn(savedOrder);
 
         // then — kiểm tra response trả về đầy đủ: user, products, quantity, total
-        mockMvc.perform(post("/order/{userId}", USER_ID).cookie(cookie))
+        mockMvc.perform(post("/order/{userId}", USER_ID)
+                        .cookie(cookie)
+                        .header("X-User-Id", USER_ID.toString())
+                        .header("X-User-Roles", "ROLE_USER"))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(99))

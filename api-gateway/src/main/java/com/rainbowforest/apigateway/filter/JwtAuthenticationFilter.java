@@ -1,6 +1,7 @@
 package com.rainbowforest.apigateway.filter;
 
 import com.rainbowforest.apigateway.config.JwtUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,7 +24,9 @@ public class JwtAuthenticationFilter implements WebFilter {
     private final JwtUtils jwtUtils;
     private final ReactiveRedisTemplate<String, String> redisTemplate;
 
-    public JwtAuthenticationFilter(JwtUtils jwtUtils, ReactiveRedisTemplate<String, String> redisTemplate) {
+    public JwtAuthenticationFilter(
+            JwtUtils jwtUtils,
+            @Qualifier("reactiveStringRedisTemplate") ReactiveRedisTemplate<String, String> redisTemplate) {
         this.jwtUtils = jwtUtils;
         this.redisTemplate = redisTemplate;
     }
