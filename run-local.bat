@@ -35,11 +35,10 @@ start "notification-service (8816)" cmd /k "cd notification-service && .\mvnw.cm
 echo Khoi dong api-gateway (Port 8900)...
 start "api-gateway (8900)" cmd /k "cd api-gateway && .\mvnw.cmd spring-boot:run"
 
-echo.
 echo ==============================================================
-echo 3. Khoi dong Frontend (Port 3000)...
+echo 3. Khoi dong Frontend-React (Port 5173)...
 echo ==============================================================
-start "frontend (3000)" cmd /k "cd frontend && python -m http.server 3000"
+start "frontend-react (5173)" cmd /k "cd frontend-react && npm run dev"
 
 echo.
 echo ==============================================================
