@@ -2,6 +2,7 @@ package com.rainbowforest.productcatalogservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -28,6 +29,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new GatewayHeaderFilter(), UsernamePasswordAuthenticationFilter.class);
@@ -39,7 +41,8 @@ public class SecurityConfig {
         protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                 throws ServletException, IOException {
             String path = request.getRequestURI();
-            if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/actuator")) {
+            if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/actuator")
+                    || (request.getMethod().equalsIgnoreCase("GET") && path.startsWith("/products"))) {
                 filterChain.doFilter(request, response);
                 return;
             }
