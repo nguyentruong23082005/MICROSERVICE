@@ -5,6 +5,7 @@ import com.rainbowforest.userservice.entity.UserRole;
 import com.rainbowforest.userservice.repository.UserRepository;
 import com.rainbowforest.userservice.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -18,6 +19,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
     public List<User> getAllUsers() {
@@ -39,6 +43,9 @@ public class UserServiceImpl implements UserService {
         user.setActive(1);
         UserRole role = userRoleRepository.findUserRoleByRoleName("ROLE_USER");
         user.setRole(role);
+        if (user.getUserPassword() != null) {
+            user.setUserPassword(passwordEncoder.encode(user.getUserPassword()));
+        }
         return userRepository.save(user);
     }
 }
