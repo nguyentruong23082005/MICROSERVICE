@@ -4,24 +4,22 @@ import com.rainbowforest.recommendationservice.model.Product;
 import com.rainbowforest.recommendationservice.model.Recommendation;
 import com.rainbowforest.recommendationservice.model.User;
 import com.rainbowforest.recommendationservice.repository.RecommendationRepository;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 public class RecommendationServiceTests {
 
     private final Long RECOMMENDATION_ID = 1L;
@@ -39,7 +37,7 @@ public class RecommendationServiceTests {
     @InjectMocks
     private RecommendationServiceImpl recommendationService;
 
-    @Before
+    @BeforeEach
     public void setUp(){
         user = new User();
         user.setUserName(USER_NAME);
@@ -63,9 +61,9 @@ public class RecommendationServiceTests {
         List<Recommendation> foundRecommendations = recommendationService.getAllRecommendationByProductName(PRODUCT_NAME);
 
         //then
-        assertEquals(foundRecommendations.get(0).getId(), RECOMMENDATION_ID);
-        assertEquals(foundRecommendations.get(0).getProduct().getProductName(), PRODUCT_NAME);
-        assertEquals(foundRecommendations.get(0).getUser().getUserName(), USER_NAME);
+        assertEquals(RECOMMENDATION_ID, foundRecommendations.get(0).getId());
+        assertEquals(PRODUCT_NAME, foundRecommendations.get(0).getProduct().getProductName());
+        assertEquals(USER_NAME, foundRecommendations.get(0).getUser().getUserName());
         Mockito.verify(repository, Mockito.times(1)).findAllRatingByProductName(anyString());
         Mockito.verifyNoMoreInteractions(repository);
     }
@@ -79,9 +77,9 @@ public class RecommendationServiceTests {
         Recommendation found = recommendationService.saveRecommendation(recommendation);
 
         //then
-        assertEquals(found.getId(), RECOMMENDATION_ID);
-        assertEquals(found.getProduct().getProductName(), PRODUCT_NAME);
-        assertEquals(found.getUser().getUserName(), USER_NAME);
+        assertEquals(RECOMMENDATION_ID, found.getId());
+        assertEquals(PRODUCT_NAME, found.getProduct().getProductName());
+        assertEquals(USER_NAME, found.getUser().getUserName());
         Mockito.verify(repository, Mockito.times(1)).save(any(Recommendation.class));
         Mockito.verifyNoMoreInteractions(repository);
     }
