@@ -21,3 +21,6 @@ init.sql
 
 # Log files
 *.log
+
+# Environment secrets (use .env.example as template)
+.env
