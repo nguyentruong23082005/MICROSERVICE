@@ -55,17 +55,30 @@ public class ProductController {
         		HttpStatus.NOT_FOUND);
     }
 
-    @GetMapping (value = "/products", params = "name")
-    public ResponseEntity<List<Product>> getAllProductsByName(@RequestParam ("name") String name){
-        List<Product> products =  productService.getAllProductsByName(name);
-        if(!products.isEmpty()) {
-        	return new ResponseEntity<List<Product>>(
-        			products,
-        			headerGenerator.getHeadersForSuccessGetMethod(),
-        			HttpStatus.OK);
+    @GetMapping(value = "/products", params = "name")
+    public ResponseEntity<List<Product>> getAllProductsByName(@RequestParam("name") String name) {
+        List<Product> products = productService.getAllProductsByName(name);
+        if (!products.isEmpty()) {
+            return new ResponseEntity<>(products, headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
         }
-        return new ResponseEntity<List<Product>>(
-        		headerGenerator.getHeadersForError(),
-        		HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+    }
+
+    @GetMapping(value = "/products", params = "room")
+    public ResponseEntity<List<Product>> getAllProductsByRoom(@RequestParam("room") String room) {
+        List<Product> products = productService.getAllProductsByRoom(room);
+        if (!products.isEmpty()) {
+            return new ResponseEntity<>(products, headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+    }
+
+    @GetMapping(value = "/products", params = "material")
+    public ResponseEntity<List<Product>> getAllProductsByMaterial(@RequestParam("material") String material) {
+        List<Product> products = productService.getAllProductsByMaterial(material);
+        if (!products.isEmpty()) {
+            return new ResponseEntity<>(products, headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
     }
 }

@@ -34,6 +34,15 @@ public class ProductServiceImpl implements ProductService {
         return productRepository.findAllByProductNameOrderByIdAsc(name);
     }
 
+    @Override
+    public List<Product> getAllProductsByRoom(String room) {
+        return productRepository.findAllByRoomOrderByIdAsc(room);
+    }
+
+    @Override
+    public List<Product> getAllProductsByMaterial(String material) {
+        return productRepository.findAllByMaterialOrderByIdAsc(material);
+    }
 
     @Override
     public Product addProduct(Product product) {
