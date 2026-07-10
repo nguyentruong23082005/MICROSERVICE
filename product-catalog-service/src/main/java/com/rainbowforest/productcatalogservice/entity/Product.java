@@ -6,93 +6,128 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Entity
-@Table (name = "products")
+@Table(name = "products")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
 
     @Id
-    @GeneratedValue (strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column (name = "product_name")
+    @Column(name = "product_name")
     @NotNull
     private String productName;
 
-    @Column (name = "price")
+    @Column(name = "price")
     @NotNull
     private BigDecimal price;
 
-    @Column (name = "discription")
+    /** Kept with original column name for backward compatibility; alias via getter/setter */
+    @Column(name = "discription", length = 2000)
     private String discription;
 
-    @Column (name = "category")
+    @Column(name = "category")
     @NotNull
     private String category;
 
-    @Column (name = "availability")
+    @Column(name = "availability")
     @NotNull
     private int availability;
 
-    @Column (name = "image_url", length = 500)
+    @Column(name = "image_url", length = 500)
     private String imageUrl;
 
-	public Product() {
+    // ── Furniture domain fields ───────────────────────────────────────────────
 
-	}
+    /** Phòng phù hợp: Living Room, Bedroom, Dining Room, Workspace */
+    @Column(name = "room")
+    private String room;
 
-	public Long getId() {
-		return id;
-	}
+    /** Chất liệu: Oak, Walnut, Linen, Leather … */
+    @Column(name = "material")
+    private String material;
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    /** Màu sắc: Natural, Sand, Charcoal … */
+    @Column(name = "color")
+    private String color;
 
-	public String getProductName() {
-		return productName;
-	}
+    /** Kích thước dạng text, vd: "W120 x D60 x H75 cm" */
+    @Column(name = "dimensions")
+    private String dimensions;
 
-	public void setProductName(String productName) {
-		this.productName = productName;
-	}
+    /** Bộ sưu tập / dòng sản phẩm */
+    @Column(name = "collection")
+    private String collection;
 
-	public BigDecimal getPrice() {
-		return price;
-	}
+    /** Mã SKU nội bộ */
+    @Column(name = "sku", unique = true)
+    private String sku;
 
-	public void setPrice(BigDecimal price) {
-		this.price = price;
-	}
+    /** URL-friendly slug cho SEO */
+    @Column(name = "slug", unique = true)
+    private String slug;
 
-	public String getDiscription() {
-		return discription;
-	}
+    /** Thời gian bảo hành, vd: "24 tháng" */
+    @Column(name = "warranty")
+    private String warranty;
 
-	public void setDiscription(String discription) {
-		this.discription = discription;
-	}
+    /** Cân nặng kg */
+    @Column(name = "weight_kg")
+    private Double weightKg;
 
-	public String getCategory() {
-		return category;
-	}
+    public Product() {}
 
-	public void setCategory(String category) {
-		this.category = category;
-	}
+    // ── Getters / Setters ─────────────────────────────────────────────────────
 
-	public int getAvailability() {
-		return availability;
-	}
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-	public void setAvailability(int availability) {
-		this.availability = availability;
-	}
+    public String getProductName() { return productName; }
+    public void setProductName(String productName) { this.productName = productName; }
 
-    public String getImageUrl() {
-        return imageUrl;
-    }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
+    public String getDiscription() { return discription; }
+    public void setDiscription(String discription) { this.discription = discription; }
+
+    /** Alias so frontend can also send "description" */
+    public String getDescription() { return discription; }
+    public void setDescription(String description) { this.discription = description; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+
+    public int getAvailability() { return availability; }
+    public void setAvailability(int availability) { this.availability = availability; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getRoom() { return room; }
+    public void setRoom(String room) { this.room = room; }
+
+    public String getMaterial() { return material; }
+    public void setMaterial(String material) { this.material = material; }
+
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
+
+    public String getDimensions() { return dimensions; }
+    public void setDimensions(String dimensions) { this.dimensions = dimensions; }
+
+    public String getCollection() { return collection; }
+    public void setCollection(String collection) { this.collection = collection; }
+
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
+
+    public String getWarranty() { return warranty; }
+    public void setWarranty(String warranty) { this.warranty = warranty; }
+
+    public Double getWeightKg() { return weightKg; }
+    public void setWeightKg(Double weightKg) { this.weightKg = weightKg; }
 }

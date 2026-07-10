@@ -16,23 +16,24 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> getAllProduct() {
-        return productRepository.findAll();
+        return productRepository.findAllByOrderByIdAsc();
     }
 
     @Override
     public List<Product> getAllProductByCategory(String category) {
-        return productRepository.findAllByCategory(category);
+        return productRepository.findAllByCategoryOrderByIdAsc(category);
     }
 
     @Override
     public Product getProductById(Long id) {
-        return productRepository.getOne(id);
+        return productRepository.findById(id).orElse(null);
     }
 
     @Override
     public List<Product> getAllProductsByName(String name) {
-        return productRepository.findAllByProductName(name);
+        return productRepository.findAllByProductNameOrderByIdAsc(name);
     }
+
 
     @Override
     public Product addProduct(Product product) {
