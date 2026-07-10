@@ -17,6 +17,17 @@ export default function Products() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStock, setFilterStock] = useState('');
+
+  const filtered = products.filter(p =>
+    (!search || p.productName?.toLowerCase().includes(search.toLowerCase())) &&
+    (!filterCategory || p.category === filterCategory) &&
+    (!filterStock ||
+      (filterStock === 'in' && p.availability > 0) ||
+      (filterStock === 'out' && p.availability === 0))
+  );
 
   const load = () => {
     setLoading(true);
@@ -204,18 +215,18 @@ export default function Products() {
       <div className="admin-filter-bar">
         <div className="admin-search-box">
           <svg className="admin-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" className="admin-search-input" placeholder="Tìm sản phẩm..." />
+          <input type="text" className="admin-search-input" placeholder="Tìm sản phẩm..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="admin-filter-select" aria-label="Lọc theo danh mục">
-          <option>Tất cả danh mục</option>
+        <select className="admin-filter-select" aria-label="Lọc theo danh mục" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+          <option value="">Tất cả danh mục</option>
           {PRODUCT_CATEGORIES.map(cat => (
             <option key={cat.value} value={cat.value}>{cat.label}</option>
           ))}
         </select>
-        <select className="admin-filter-select" aria-label="Lọc theo trạng thái">
-          <option>Tất cả trạng thái</option>
-          <option>Còn hàng</option>
-          <option>Hết hàng</option>
+        <select className="admin-filter-select" aria-label="Lọc theo trạng thái" value={filterStock} onChange={e => setFilterStock(e.target.value)}>
+          <option value="">Tất cả trạng thái</option>
+          <option value="in">Còn hàng</option>
+          <option value="out">Hết hàng</option>
         </select>
       </div>
 
@@ -232,7 +243,7 @@ export default function Products() {
             </tr>
           </thead>
           <tbody>
-            {products.map(p => (
+            {filtered.map(p => (
               <tr key={p.id}>
                 <td>
                   <div className="admin-product-cell">
