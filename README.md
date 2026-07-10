@@ -1,17 +1,17 @@
 # REST Microservices Architecture for E-commerce
 
-Production-ready learning project for an e-commerce system using Spring Boot microservices, API Gateway, Eureka, PostgreSQL, Redis, Kafka and a static frontend.
+Production-ready learning project for an e-commerce system using Spring Boot microservices, API Gateway, Eureka, PostgreSQL, Redis, Kafka and a React/Vite frontend.
 
 ## Architecture
 
 ```text
-frontend
+frontend-react :5173
   ↓
 api-gateway :8900
-  ├─ user-service :8800            login/register/JWT
-  ├─ product-catalog-service :8801 catalog + inventory consumer
-  ├─ order-service :8802           Redis cart + checkout + order-created producer
-  ├─ product-recommendation-service
+  ├─ user-service :8811            login/register/JWT
+  ├─ product-catalog-service :8812 catalog + inventory consumer
+  ├─ order-service :8813           Redis cart + checkout + order-created producer
+  ├─ product-recommendation-service :8814
   ├─ payment-service :8815         order-created consumer + payment-completed producer
   └─ notification-service :8816    payment-completed consumer
 
@@ -26,10 +26,10 @@ Kafka topics:
 | --- | --- | ---: | --- |
 | Eureka Server | Service discovery | 8761 | - |
 | API Gateway | JWT filter + routing | 8900 | `/api/**` |
-| User Service | Register/login/JWT | 8800 | `/api/accounts/**` |
-| Product Catalog Service | Products/category/inventory | 8801 | `/api/catalog/**` |
-| Order Service | Cart and checkout | 8802 | `/api/shop/**` |
-| Product Recommendation Service | Reviews/recommendations | 8803 | `/api/review/**` |
+| User Service | Register/login/JWT | 8811 | `/api/accounts/**` |
+| Product Catalog Service | Products/category/inventory | 8812 | `/api/catalog/**` |
+| Order Service | Cart and checkout | 8813 | `/api/shop/**` |
+| Product Recommendation Service | Reviews/recommendations | 8814 | `/api/review/**` |
 | Payment Service | Payment automation | 8815 | `/api/payments/**` |
 | Notification Service | User notifications | 8816 | `/api/notifications/**` |
 
@@ -44,7 +44,22 @@ Kafka topics:
 - Redis cart storage
 - Apache Kafka event flow
 - Eureka discovery
-- Static HTML/CSS/JavaScript frontend
+- React/Vite frontend
+
+## Environment Configuration
+
+Before running the infrastructure or services, copy the environment template:
+
+```powershell
+cp .env.example .env
+```
+
+The system uses the following environment variables (with defaults):
+- `DB_PASSWORD` (default: `postgres`)
+- `REDIS_HOST` (default: `localhost`)
+- `KAFKA_SERVERS` (default: `localhost:9092`)
+- `MONGO_HOST` (default: `localhost`)
+- `JWT_SECRET` (default: `change-me-in-production`)
 
 ## Run infrastructure
 
@@ -107,11 +122,12 @@ cd C:\e-commerce-microservices\api-gateway
 ## Run frontend
 
 ```powershell
-cd C:\e-commerce-microservices\frontend
-python -m http.server 3000
+cd C:\e-commerce-microservices\frontend-react
+npm install
+npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:5173`.
 
 ## End-to-end test guide
 
@@ -127,7 +143,7 @@ Expected: HTTP 200 if actuator is exposed, or use Eureka UI at `http://localhost
 
 ```powershell
 $login = Invoke-RestMethod -Method Post `
-  -Uri http://localhost:8900/api/accounts/login `
+  -Uri http://localhost:8900/api/accounts/auth/login `
   -ContentType 'application/json' `
   -Body '{"userName":"admin","password":"admin"}'
 
@@ -155,8 +171,8 @@ Use any numeric cart cookie value, for example `1001`:
 $cartHeaders = @{ Authorization = "Bearer $token"; Cookie = "1001" }
 
 Invoke-RestMethod -Method Post `
-  -Uri 'http://localhost:8900/api/shop/cart?productId=1&quantity=2' `
-  -Headers $cartHeaders
+  -Uri 'http://localhost:8900/api/shop/cart/1001/items?productId=1&quantity=2' `
+  -Headers $headers
 ```
 
 Expected: cart item is created in Redis.
@@ -165,8 +181,8 @@ Expected: cart item is created in Redis.
 
 ```powershell
 Invoke-RestMethod -Method Post `
-  -Uri 'http://localhost:8900/api/shop/order/1' `
-  -Headers $cartHeaders
+  -Uri 'http://localhost:8900/api/shop/order/1/cart/1001' `
+  -Headers $headers
 ```
 
 Expected:
@@ -181,7 +197,7 @@ Wait a few seconds, then:
 
 ```powershell
 Invoke-RestMethod -Method Get `
-  -Uri http://localhost:8900/api/payments/payments `
+  -Uri http://localhost:8900/api/payments `
   -Headers $headers
 ```
 
@@ -191,7 +207,7 @@ Expected: payment row with status `COMPLETED` for the order.
 
 ```powershell
 Invoke-RestMethod -Method Get `
-  -Uri http://localhost:8900/api/notifications/notifications `
+  -Uri http://localhost:8900/api/notifications `
   -Headers $headers
 ```
 
@@ -217,5 +233,5 @@ The project meets the requested completion requirements when:
 - Checkout creates an order and publishes `order-created` to Kafka.
 - Payment service consumes `order-created` and creates completed payments.
 - Notification service consumes `payment-completed` and creates notifications.
-- Catalog service consumes `order-created` and reduces inventory.
+- Catalog service consumes `payment-completed` and reduces inventory.
 - Frontend can display products, login, preview cart and inspect payments/notifications.
