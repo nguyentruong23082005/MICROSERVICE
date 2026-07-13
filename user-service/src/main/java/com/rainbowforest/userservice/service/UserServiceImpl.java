@@ -4,6 +4,8 @@ import com.rainbowforest.userservice.entity.User;
 import com.rainbowforest.userservice.entity.UserRole;
 import com.rainbowforest.userservice.repository.UserRepository;
 import com.rainbowforest.userservice.repository.UserRoleRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,12 @@ public class UserServiceImpl implements UserService {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @Override
+    public Page<User> searchUsersAdmin(String search, Pageable pageable) {
+        String searchClean = (search == null || search.trim().isEmpty()) ? null : search.trim();
+        return userRepository.searchUsersAdmin(searchClean, pageable);
     }
 
     @Override

@@ -59,7 +59,18 @@ public class UserController {
     }
 
     @GetMapping(value = "/admin/users")
-    public ResponseEntity<List<User>> getAllUsersForAdmin() {
+    public ResponseEntity<?> getAllUsersForAdmin(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "search", required = false) String search) {
+        
+        if (page != null && size != null) {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                    page, size, org.springframework.data.domain.Sort.by("id").ascending());
+            org.springframework.data.domain.Page<User> userPage = userService.searchUsersAdmin(search, pageable);
+            return new ResponseEntity<>(userPage, HttpStatus.OK);
+        }
+        
         return new ResponseEntity<>(
                 userService.getAllUsers(),
                 headerGenerator.getHeadersForSuccessGetMethod(),
