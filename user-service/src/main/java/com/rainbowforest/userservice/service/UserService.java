@@ -9,4 +9,6 @@ public interface UserService {
     User getUserById(Long id);
     User getUserByName(String userName);
     User saveUser(User user);
+    User updateUserActive(Long id, boolean active);
+    User updateUserRole(Long id, String roleName);
 }
