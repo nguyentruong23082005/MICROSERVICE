@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { adminGetOrders } from '../services/adminService.js';
-import { adminUpdateOrderStatus } from '../../orders/index.js';
+import { adminGetOrders, adminUpdateOrderStatus } from '../services/adminService.js';
 import { money } from '../../../utils/formatters.js';
 import { translateStatus, translatePayment } from '../../../utils/uiText.js';
 import {
@@ -14,41 +13,69 @@ import {
   orderTotal,
 } from '../../orders/utils/orderViewModel.js';
 
+import Pagination from '../components/Pagination.jsx';
+import { ADMIN_PAGE_SIZE } from '../../../utils/constants.js';
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [counts, setCounts] = useState({});
 
-  const counts = orders.reduce(
-    (nextCounts, order) => {
-      const status = orderStatus(order);
-      return {
-        ...nextCounts,
-        [status]: (nextCounts[status] || 0) + 1,
-      };
-    },
-    {},
-  );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const filtered = orders.filter(o => {
-    const status = orderStatus(o);
-    const customer = orderCustomerName(o);
-    const id = orderDisplayId(o);
-    return (
-      (!filterStatus || status === filterStatus) &&
-      (!search ||
-        customer.toLowerCase().includes(search.toLowerCase()) ||
-        String(id).includes(search))
-    );
-  });
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-  const load = () => {
-    setLoading(true);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterStatus]);
+
+  const loadCounts = () => {
     adminGetOrders()
       .then((data) => {
-        setOrders(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        const nextCounts = list.reduce(
+          (acc, order) => {
+            const status = orderStatus(order);
+            return {
+              ...acc,
+              [status]: (acc[status] || 0) + 1,
+            };
+          },
+          {},
+        );
+        setCounts(nextCounts);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadCounts();
+  }, []);
+
+  const load = (page, searchVal, statusVal) => {
+    setLoading(true);
+    adminGetOrders(page - 1, ADMIN_PAGE_SIZE, {
+      status: statusVal,
+      search: searchVal,
+    })
+      .then((data) => {
+        if (data && data.content) {
+          setOrders(data.content);
+          setTotalPages(data.totalPages || 0);
+        } else {
+          setOrders(Array.isArray(data) ? data : []);
+          setTotalPages(0);
+        }
       })
       .catch((err) => {
         setError(err.message);
@@ -60,16 +87,19 @@ export default function Orders() {
 
   useEffect(() => {
     let active = true;
-    Promise.resolve().then(() => {
-      if (active) load();
-    });
+    if (active) {
+      load(currentPage, debouncedSearch, filterStatus);
+    }
     return () => { active = false; };
-  }, []);
+  }, [currentPage, debouncedSearch, filterStatus]);
+
+  const filtered = orders;
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
       await adminUpdateOrderStatus(orderId, newStatus);
-      load();
+      load(currentPage, debouncedSearch, filterStatus);
+      loadCounts();
     } catch (err) {
       alert("Không thể cập nhật trạng thái đơn hàng: " + err.message);
     }
@@ -82,7 +112,6 @@ export default function Orders() {
           <h1 className="admin-page-title">Đơn hàng</h1>
           <p className="admin-subtitle">Theo dõi và xử lý đơn đặt hàng của khách hàng.</p>
         </div>
-        <button className="admin-btn admin-btn-outline">Xuất dữ liệu</button>
       </div>
 
       {error && <div className="admin-notice admin-notice-error">{error}</div>}
@@ -188,6 +217,11 @@ export default function Orders() {
             })}
           </tbody>
         </table>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
         {orders.length === 0 && !loading && (
           <div className="admin-empty" style={{ borderTop: '1px solid var(--admin-border)' }}>
             <h3>Không tìm thấy đơn hàng</h3>
