@@ -1,4 +1,4 @@
-import { get, post, put, del } from '../../../api/client.js';
+import { get, post, put, del, request } from '../../../api/client.js';
 
 const CATALOG = '/catalog';
 const ACCOUNTS = '/accounts';
@@ -53,3 +53,13 @@ export const adminUpdateUserStatus = (id, active) =>
   put(`${ACCOUNTS}/admin/users/${id}/status?active=${active}`);
 export const adminUpdateUserRole = (id, roleName) =>
   put(`${ACCOUNTS}/admin/users/${id}/role?roleName=${encodeURIComponent(roleName)}`);
+
+export const adminUploadImage = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request(`${CATALOG}/admin/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+};
+

@@ -4,7 +4,10 @@ import {
   adminCreateCategory,
   adminUpdateCategory,
   adminDeleteCategory,
+  adminUploadImage,
 } from '../services/adminService.js';
+import { GATEWAY_BASE_URL } from '../../../api/client.js';
+
 
 const EMPTY_FORM = {
   name: '',
@@ -71,6 +74,25 @@ export default function Categories() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setShowAdd(false);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setMessage({ type: 'success', text: 'Đang tải ảnh lên...' });
+      const res = await adminUploadImage(file);
+      if (res && res.url) {
+        const fullUrl = res.url.startsWith('/') ? `${GATEWAY_BASE_URL}${res.url}` : res.url;
+        setForm((current) => ({
+          ...current,
+          imageUrl: fullUrl,
+        }));
+        setMessage({ type: 'success', text: 'Tải ảnh lên thành công!' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Không thể tải ảnh lên.' });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -155,7 +177,13 @@ export default function Categories() {
             </div>
             <div className="admin-form-group">
               <label className="admin-label" htmlFor="cat-img">Đường dẫn ảnh (URL)</label>
-              <input id="cat-img" className="admin-input" name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="https://" />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input id="cat-img" className="admin-input" name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="https://" style={{ flex: 1 }} />
+                <label className="admin-btn admin-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', padding: '10px 16px' }}>
+                  Tải ảnh
+                  <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
             </div>
             <div className="admin-form-group">
               <label className="admin-label" htmlFor="cat-order">Thứ tự hiển thị</label>

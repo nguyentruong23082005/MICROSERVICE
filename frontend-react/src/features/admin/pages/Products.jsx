@@ -5,9 +5,12 @@ import {
   adminCreateProduct,
   adminUpdateProduct,
   adminDeleteProduct,
+  adminUploadImage,
 } from '../services/adminService.js';
 import { money } from '../../../utils/formatters.js';
 import { translateCategory } from '../../../utils/uiText.js';
+import { GATEWAY_BASE_URL } from '../../../api/client.js';
+
 
 import Pagination from '../components/Pagination.jsx';
 import { ADMIN_PAGE_SIZE } from '../../../utils/constants.js';
@@ -126,6 +129,25 @@ export default function Products() {
 
   const handleChange = (event) =>
     setForm(previous => ({ ...previous, [event.target.name]: event.target.value }));
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setMessage({ type: 'success', text: 'Đang tải ảnh lên...' });
+      const res = await adminUploadImage(file);
+      if (res && res.url) {
+        const fullUrl = res.url.startsWith('/') ? `${GATEWAY_BASE_URL}${res.url}` : res.url;
+        setForm((current) => ({
+          ...current,
+          imageUrl: fullUrl,
+        }));
+        setMessage({ type: 'success', text: 'Tải ảnh lên thành công!' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Không thể tải ảnh lên.' });
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -246,10 +268,16 @@ export default function Products() {
               <label className="admin-label" htmlFor="p-qty">Số lượng tồn kho</label>
               <input id="p-qty" className="admin-input" type="number" name="availability" value={form.availability} onChange={handleChange} min="0" />
             </div>
-            <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="admin-label" htmlFor="p-img">Đường dẫn ảnh (URL)</label>
-              <input id="p-img" className="admin-input" name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="https://" />
-            </div>
+             <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
+               <label className="admin-label" htmlFor="p-img">Đường dẫn ảnh (URL)</label>
+               <div style={{ display: 'flex', gap: '8px' }}>
+                 <input id="p-img" className="admin-input" name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="https://" style={{ flex: 1 }} />
+                 <label className="admin-btn admin-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', padding: '10px 16px' }}>
+                   Tải ảnh
+                   <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                 </label>
+               </div>
+             </div>
 
             <div className="admin-form-group">
               <label className="admin-label" htmlFor="p-room">Phòng phù hợp</label>
