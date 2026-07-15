@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -29,6 +31,11 @@ public class Product {
     @Column(name = "category")
     @NotNull
     private String category;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "category_id")
+    @JsonIgnoreProperties({"parent", "children", "hibernateLazyInitializer", "handler"})
+    private Category categoryRef;
 
     @Column(name = "availability")
     @NotNull
@@ -75,6 +82,14 @@ public class Product {
     @Column(name = "weight_kg")
     private Double weightKg;
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("displayOrder ASC, id ASC")
+    private List<ProductImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("displayOrder ASC, id ASC")
+    private List<ProductSpecification> specifications = new ArrayList<>();
+
     public Product() {}
 
     // ── Getters / Setters ─────────────────────────────────────────────────────
@@ -97,6 +112,9 @@ public class Product {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public Category getCategoryRef() { return categoryRef; }
+    public void setCategoryRef(Category categoryRef) { this.categoryRef = categoryRef; }
 
     public int getAvailability() { return availability; }
     public void setAvailability(int availability) { this.availability = availability; }
@@ -130,4 +148,34 @@ public class Product {
 
     public Double getWeightKg() { return weightKg; }
     public void setWeightKg(Double weightKg) { this.weightKg = weightKg; }
+
+    public List<ProductImage> getImages() { return images; }
+    public void setImages(List<ProductImage> images) {
+        this.images.clear();
+        if (images != null) {
+            images.forEach(this::addImage);
+        }
+    }
+
+    public void addImage(ProductImage image) {
+        if (image != null) {
+            image.setProduct(this);
+            this.images.add(image);
+        }
+    }
+
+    public List<ProductSpecification> getSpecifications() { return specifications; }
+    public void setSpecifications(List<ProductSpecification> specifications) {
+        this.specifications.clear();
+        if (specifications != null) {
+            specifications.forEach(this::addSpecification);
+        }
+    }
+
+    public void addSpecification(ProductSpecification specification) {
+        if (specification != null) {
+            specification.setProduct(this);
+            this.specifications.add(specification);
+        }
+    }
 }

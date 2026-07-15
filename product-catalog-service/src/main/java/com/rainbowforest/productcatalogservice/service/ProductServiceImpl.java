@@ -56,12 +56,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Cacheable(value = "products", key = "#id", unless = "#result == null")
     public Product getProductById(Long id) {
         if (id == null) {
             return null;
         }
-        log.info("[product-catalog] Cache MISS for product id={}, querying DB", id);
+        log.info("[product-catalog] Querying DB for product id={}", id);
         return productRepository.findById(id).orElse(null);
     }
 
@@ -81,10 +80,6 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Caching(evict = {
-        @CacheEvict(value = "products", allEntries = true),
-        @CacheEvict(value = "productList", allEntries = true)
-    })
     public Product addProduct(Product product) {
         if (product == null) {
             throw new IllegalArgumentException("Product is required");
@@ -106,10 +101,6 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Caching(evict = {
-        @CacheEvict(value = "products", key = "#productId"),
-        @CacheEvict(value = "productList", allEntries = true)
-    })
     public boolean deleteProduct(Long productId) {
         if (productId == null || !productRepository.existsById(productId)) {
             return false;

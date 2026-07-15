@@ -1,0 +1,323 @@
+name: ${COMPOSE_PROJECT_NAME:-e-commerce-microservices}
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ecom-postgres
+    ports:
+      - "${POSTGRES_HOST_PORT:-5434}:${POSTGRES_CONTAINER_PORT:-5432}"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DEFAULT_DB:-postgres}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/01-create-databases.sql:/docker-entrypoint-initdb.d/01-create-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DEFAULT_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecom-redis
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:${REDIS_PORT:-6379}"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: ecom-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT:-2181}
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-log:/var/lib/zookeeper/log
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: ecom-kafka
+    ports:
+      - "${KAFKA_HOST_PORT:-9092}:${KAFKA_EXTERNAL_PORT:-9092}"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: ${ZOOKEEPER_HOST:-zookeeper}:${ZOOKEEPER_CLIENT_PORT:-2181}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_EXTERNAL_PORT:-9092},PLAINTEXT_INTERNAL://0.0.0.0:${KAFKA_INTERNAL_PORT:-29092}
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:${KAFKA_HOST_PORT:-9092},PLAINTEXT_INTERNAL://${KAFKA_HOST:-kafka}:${KAFKA_INTERNAL_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: ecom-mongo
+    ports:
+      - "${MONGO_HOST_PORT:-27017}:${MONGO_PORT:-27017}"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+    container_name: ecom-eureka-server
+    ports:
+      - "${EUREKA_PORT:-8761}:${EUREKA_PORT:-8761}"
+    environment:
+      SERVER_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: ./user-service
+    container_name: ecom-user-service
+    ports:
+      - "${USER_SERVICE_PORT:-8811}:${USER_SERVICE_PORT:-8811}"
+    environment:
+      SERVER_PORT: ${USER_SERVICE_PORT:-8811}
+      SERVER_URL: ${SERVER_URL:-http://user-service:8811}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_CONTAINER_PORT:-5432}/${USER_DB:-users}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET:?SECURITY_JWT_SECRET must be set to a random value of at least 32 bytes}
+      SECURITY_JWT_EXPIRATION_MS: ${SECURITY_JWT_EXPIRATION_MS:-86400000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    restart: unless-stopped
+
+  product-catalog-service:
+    build:
+      context: ./product-catalog-service
+    container_name: ecom-product-catalog-service
+    ports:
+      - "${PRODUCT_CATALOG_SERVICE_PORT:-8812}:${PRODUCT_CATALOG_SERVICE_PORT:-8812}"
+    environment:
+      SERVER_PORT: ${PRODUCT_CATALOG_SERVICE_PORT:-8812}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}
+      EUREKA_INSTANCE_HOSTNAME: product-catalog-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_CONTAINER_PORT:-5432}/${PRODUCT_CATALOG_DB:-product_catalog}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      KAFKA_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ./order-service
+    container_name: ecom-order-service
+    ports:
+      - "${ORDER_SERVICE_PORT:-8813}:${ORDER_SERVICE_PORT:-8813}"
+    environment:
+      SERVER_PORT: ${ORDER_SERVICE_PORT:-8813}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_CONTAINER_PORT:-5432}/${ORDER_DB:-orders}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+      product-catalog-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    restart: unless-stopped
+
+  product-recommendation-service:
+    build:
+      context: ./product-recommendation-service
+    container_name: ecom-product-recommendation-service
+    ports:
+      - "${PRODUCT_RECOMMENDATION_SERVICE_PORT:-8814}:${PRODUCT_RECOMMENDATION_SERVICE_PORT:-8814}"
+    environment:
+      SERVER_PORT: ${PRODUCT_RECOMMENDATION_SERVICE_PORT:-8814}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_CONTAINER_PORT:-5432}/${PRODUCT_RECOMMENDATION_DB:-product_recommendations}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      product-catalog-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ./payment-service
+    container_name: ecom-payment-service
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-8815}:${PAYMENT_SERVICE_PORT:-8815}"
+    environment:
+      SERVER_PORT: ${PAYMENT_SERVICE_PORT:-8815}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_CONTAINER_PORT:-5432}/${PAYMENT_DB:-payments}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
+      VNPAY_PAY_URL: ${VNPAY_PAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-http://localhost:8900/api/payments/vnpay/return}
+      MOMO_PARTNER_CODE: ${MOMO_PARTNER_CODE:-}
+      MOMO_ACCESS_KEY: ${MOMO_ACCESS_KEY:-}
+      MOMO_SECRET_KEY: ${MOMO_SECRET_KEY:-}
+      MOMO_CREATE_URL: ${MOMO_CREATE_URL:-https://test-payment.momo.vn/v2/gateway/api/create}
+      MOMO_RETURN_URL: ${MOMO_RETURN_URL:-http://localhost:8900/api/payments/momo/return}
+      MOMO_NOTIFY_URL: ${MOMO_NOTIFY_URL:-http://localhost:8900/api/payments/momo/ipn}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: ecom-notification-service
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-8816}:${NOTIFICATION_SERVICE_PORT:-8816}"
+    environment:
+      SERVER_PORT: ${NOTIFICATION_SERVICE_PORT:-8816}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}
+      MONGO_HOST: ${MONGO_HOST:-mongo}
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_DATABASE: ${MONGO_DATABASE:-notifications}
+      SPRING_DATA_MONGODB_HOST: ${MONGO_HOST:-mongo}
+      SPRING_DATA_MONGODB_PORT: ${MONGO_PORT:-27017}
+      SPRING_DATA_MONGODB_DATABASE: ${MONGO_DATABASE:-notifications}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_CONTAINER_PORT:-5432}/${NOTIFICATION_DB:-notifications}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      KAFKA_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: ecom-api-gateway
+    ports:
+      - "${API_GATEWAY_PORT:-8900}:${API_GATEWAY_PORT:-8900}"
+    environment:
+      SERVER_PORT: ${API_GATEWAY_PORT:-8900}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:-true}
+      SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET:?SECURITY_JWT_SECRET must be set to a random value of at least 32 bytes}
+      USER_SERVICE_URI: ${USER_SERVICE_URI:-lb://user-service}
+      PRODUCT_CATALOG_SERVICE_URI: ${PRODUCT_CATALOG_SERVICE_URI:-lb://product-catalog-service}
+      ORDER_SERVICE_URI: ${ORDER_SERVICE_URI:-lb://order-service}
+      PAYMENT_SERVICE_URI: ${PAYMENT_SERVICE_URI:-lb://payment-service}
+      NOTIFICATION_SERVICE_URI: ${NOTIFICATION_SERVICE_URI:-lb://notification-service}
+      PRODUCT_RECOMMENDATION_SERVICE_URI: ${PRODUCT_RECOMMENDATION_SERVICE_URI:-lb://product-recommendation-service}
+    depends_on:
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      user-service:
+        condition: service_started
+      product-catalog-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      product-recommendation-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  zookeeper-data:
+  zookeeper-log:
+  kafka-data:
+  mongo-data:
