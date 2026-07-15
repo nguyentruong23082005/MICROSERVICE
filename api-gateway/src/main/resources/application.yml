@@ -162,7 +162,7 @@ management:
     health:
       show-details: always
 
-# Springdoc OpenAPI Aggregation configuration
+# Springdoc OpenAPI Aggregation — all 6 services
 springdoc:
   swagger-ui:
     urls:
@@ -172,3 +172,9 @@ springdoc:
         url: /api/catalog/v3/api-docs
       - name: Order Service
         url: /api/shop/v3/api-docs
+      - name: Payment Service
+        url: /api/payments/v3/api-docs
+      - name: Notification Service
+        url: /api/notifications/v3/api-docs
+      - name: Recommendation Service
+        url: /api/review/v3/api-docs

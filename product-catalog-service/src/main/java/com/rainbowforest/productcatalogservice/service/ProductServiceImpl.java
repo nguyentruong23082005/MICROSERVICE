@@ -2,6 +2,11 @@ package com.rainbowforest.productcatalogservice.service;
 
 import com.rainbowforest.productcatalogservice.entity.Product;
 import com.rainbowforest.productcatalogservice.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,6 +17,7 @@ import java.util.List;
 @Transactional
 public class ProductServiceImpl implements ProductService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
     private final ProductRepository productRepository;
 
     public ProductServiceImpl(ProductRepository productRepository) {
@@ -46,10 +52,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "products", key = "#id", unless = "#result == null")
     public Product getProductById(Long id) {
         if (id == null) {
             return null;
         }
+        log.info("[product-catalog] Cache MISS for product id={}, querying DB", id);
         return productRepository.findById(id).orElse(null);
     }
 
@@ -69,6 +77,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products", allEntries = true),
+        @CacheEvict(value = "productList", allEntries = true)
+    })
     public Product addProduct(Product product) {
         if (product == null) {
             throw new IllegalArgumentException("Product is required");
@@ -90,6 +102,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "products", key = "#productId"),
+        @CacheEvict(value = "productList", allEntries = true)
+    })
     public boolean deleteProduct(Long productId) {
         if (productId == null || !productRepository.existsById(productId)) {
             return false;
