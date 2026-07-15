@@ -35,13 +35,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("""
             select p from Product p
             left join p.categoryRef c
-            where (:name is null or lower(p.productName) like lower(concat('%', :name, '%')))
-              and (:category is null or p.category = :category or lower(c.slug) = lower(:category))
-              and (:inStock is null or (:inStock = true and p.availability > 0) or (:inStock = false and p.availability = 0))
+            where (:name = '' or lower(p.productName) like lower(concat('%', :name, '%')))
+              and (:category = '' or p.category = :category or lower(c.slug) = lower(:category))
+              and (:inStockStr = 'ALL' or (:inStockStr = 'TRUE' and p.availability > 0) or (:inStockStr = 'FALSE' and p.availability = 0))
             """)
     Page<Product> searchProductsAdmin(
             @Param("name") String name,
             @Param("category") String category,
-            @Param("inStock") Boolean inStock,
+            @Param("inStockStr") String inStockStr,
             Pageable pageable);
 }

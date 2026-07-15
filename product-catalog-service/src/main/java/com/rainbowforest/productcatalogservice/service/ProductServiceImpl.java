@@ -36,9 +36,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Page<Product> searchProductsAdmin(String name, String category, Boolean inStock, Pageable pageable) {
-        String nameClean = (name == null || name.trim().isEmpty()) ? null : name.trim();
-        String catClean = (category == null || category.trim().isEmpty()) ? null : category.trim();
-        return productRepository.searchProductsAdmin(nameClean, catClean, inStock, pageable);
+        String nameClean = (name == null || name.trim().isEmpty()) ? "" : name.trim();
+        String catClean = (category == null || category.trim().isEmpty()) ? "" : category.trim();
+        String inStockStr = "ALL";
+        if (inStock != null) {
+            inStockStr = inStock ? "TRUE" : "FALSE";
+        }
+        return productRepository.searchProductsAdmin(nameClean, catClean, inStockStr, pageable);
     }
 
     @Override
