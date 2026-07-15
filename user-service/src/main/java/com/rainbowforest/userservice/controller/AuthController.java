@@ -28,10 +28,10 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        log.info("[user-service] POST /auth/login username={}", loginRequest.getUsername());
+        log.info("[user-service] POST /auth/login username={}", loginRequest.getUserName());
         try {
             LoginResponse response = authService.login(loginRequest);
-            log.info("[user-service] Login successful username={}", loginRequest.getUsername());
+            log.info("[user-service] Login successful username={}", loginRequest.getUserName());
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException exception) {
             log.warn("[user-service] Login BadRequest: {}", exception.getMessage());
