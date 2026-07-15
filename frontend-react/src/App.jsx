@@ -14,6 +14,10 @@ import CheckoutPage from './pages/CheckoutPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import ComparePage from './pages/ComparePage.jsx';
 import ContentPage from './pages/ContentPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
 import Dashboard from './features/admin/pages/Dashboard.jsx';
 import Products from './features/admin/pages/Products.jsx';
 import Orders from './features/admin/pages/Orders.jsx';
@@ -72,8 +76,13 @@ export default function App() {
                 <Route path="content" element={<ContentPages />} />
               </Route>
 
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Auth routes (public, no layout) */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+              {/* Catch-all 404 */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </CartProvider>
           </CompareProvider>
