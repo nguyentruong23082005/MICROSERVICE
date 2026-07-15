@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public Page<User> searchUsersAdmin(String search, Pageable pageable) {
         if (search == null || search.trim().isEmpty()) {
-            return userRepository.findAll(pageable);
+            return userRepository.findAllCustomers(pageable);
         }
         String searchParam = "%" + search.trim().toLowerCase() + "%";
         return userRepository.searchUsersAdmin(searchParam, pageable);
@@ -39,7 +39,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        return userRepository.findAllCustomers();
     }
 
     @Override

@@ -15,12 +15,25 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("""
             select u from User u
+            where u.role.roleName != 'ROLE_ADMIN'
+            """)
+    Page<User> findAllCustomers(Pageable pageable);
+
+    @Query("""
+            select u from User u
+            where u.role.roleName != 'ROLE_ADMIN'
+            """)
+    java.util.List<User> findAllCustomers();
+
+    @Query("""
+            select u from User u
             left join u.userDetails d
-            where lower(u.userName) like :search
-               or lower(d.firstName) like :search
-               or lower(d.lastName) like :search
-               or lower(d.email) like :search
-               or lower(d.phoneNumber) like :search
+            where u.role.roleName != 'ROLE_ADMIN'
+              and (lower(u.userName) like :search
+                or lower(d.firstName) like :search
+                or lower(d.lastName) like :search
+                or lower(d.email) like :search
+                or lower(d.phoneNumber) like :search)
             """)
     Page<User> searchUsersAdmin(@Param("search") String search, Pageable pageable);
 }

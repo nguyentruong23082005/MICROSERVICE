@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   adminCreateUser,
   adminGetUsers,
@@ -9,6 +9,7 @@ import { useAuth } from '../../auth/hooks/useAuth.js';
 import { initials } from '../../../utils/formatters.js';
 import Pagination from '../components/Pagination.jsx';
 import { ADMIN_PAGE_SIZE } from '../../../utils/constants.js';
+import { MagnifierIcon } from '../../../components/icons/index.js';
 
 const EMPTY_FORM = {
   userName: '',
@@ -79,7 +80,6 @@ export default function Users() {
   const [activeCount, setActiveCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [blockedCount, setBlockedCount] = useState(0);
-  const [adminCount, setAdminCount] = useState(0);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -89,8 +89,12 @@ export default function Users() {
   }, [search]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch]);
+    if (currentPage !== 1) {
+      Promise.resolve().then(() => {
+        setCurrentPage(1);
+      });
+    }
+  }, [debouncedSearch, currentPage]);
 
   const loadCounts = () => {
     adminGetUsers()
@@ -100,7 +104,6 @@ export default function Users() {
         const active = list.filter(isActiveUser).length;
         setActiveCount(active);
         setBlockedCount(list.length - active);
-        setAdminCount(list.filter((u) => getRoleName(u) === 'ROLE_ADMIN').length);
       })
       .catch(() => {});
   };
@@ -129,7 +132,11 @@ export default function Users() {
   useEffect(() => {
     let active = true;
     if (active) {
-      load(currentPage, debouncedSearch);
+      Promise.resolve().then(() => {
+        if (active) {
+          load(currentPage, debouncedSearch);
+        }
+      });
     }
     return () => { active = false; };
   }, [currentPage, debouncedSearch]);
@@ -220,12 +227,8 @@ export default function Users() {
           <span className="metric-value">{loading ? '...' : activeCount}</span>
         </div>
         <div className="metric-card">
-          <span className="metric-label">Tổng tài khoản</span>
+          <span className="metric-label">Tổng khách hàng</span>
           <span className="metric-value">{loading ? '...' : totalCount}</span>
-        </div>
-        <div className="metric-card">
-          <span className="metric-label">Quản trị viên</span>
-          <span className="metric-value">{loading ? '...' : adminCount}</span>
         </div>
         <div className="metric-card">
           <span className="metric-label">Đã khóa</span>
@@ -273,7 +276,7 @@ export default function Users() {
 
       <div className="admin-filter-bar">
         <div className="admin-search-box">
-          <svg className="admin-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <MagnifierIcon className="admin-search-icon" size={16} strokeWidth={2} />
           <input type="text" className="admin-search-input" placeholder="Tìm khách hàng..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>

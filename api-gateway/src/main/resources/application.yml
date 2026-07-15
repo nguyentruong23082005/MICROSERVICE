@@ -10,6 +10,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
 
   cloud:
     gateway:
@@ -144,6 +147,10 @@ spring:
                 key-resolver: "#{@globalKeyResolver}"
                 deny-empty-key: false
 
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:4200,http://localhost:*,http://127.0.0.1:*}
 
 # Eureka client
 eureka:
