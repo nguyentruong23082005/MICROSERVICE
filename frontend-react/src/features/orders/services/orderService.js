@@ -9,6 +9,10 @@ export const getOrders = () => get(`${PREFIX}/orders`);
 
 export const getUserOrders = (userId) => get(`${PREFIX}/orders/user/${userId}`);
 
+export const getOrderById = (orderId) => get(`${PREFIX}/order/${orderId}`);
+
+export const getOrderHistory = (orderId) => get(`${PREFIX}/order/${orderId}/history`);
+
 export const adminUpdateOrderStatus = (orderId, status) =>
   put(`${PREFIX}/order/${orderId}/status?status=${status}`);
 

@@ -18,6 +18,9 @@ import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
+import SearchPage from './pages/SearchPage.jsx';
+import OrderDetailPage from './pages/OrderDetailPage.jsx';
+import OrderHistoryPage from './pages/OrderHistoryPage.jsx';
 import Dashboard from './features/admin/pages/Dashboard.jsx';
 import Products from './features/admin/pages/Products.jsx';
 import Orders from './features/admin/pages/Orders.jsx';
@@ -80,6 +83,17 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+              {/* Search (public, with layout) */}
+              <Route path="/search" element={<ClientLayout><SearchPage /></ClientLayout>} />
+
+              {/* Order routes (protected) */}
+              <Route path="/orders" element={
+                <ProtectedRoute><ClientLayout><OrderHistoryPage /></ClientLayout></ProtectedRoute>
+              } />
+              <Route path="/orders/:orderId" element={
+                <ProtectedRoute><ClientLayout><OrderDetailPage /></ClientLayout></ProtectedRoute>
+              } />
 
               {/* Catch-all 404 */}
               <Route path="*" element={<NotFoundPage />} />

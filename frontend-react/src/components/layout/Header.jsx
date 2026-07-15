@@ -60,7 +60,12 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-sm">
-          <button className="btn btn-ghost" style={{ padding: '8px', borderRadius: '50%' }} aria-label="Tìm kiếm">
+          <button
+            className="btn btn-ghost"
+            style={{ padding: '8px', borderRadius: '50%' }}
+            aria-label="Tìm kiếm"
+            onClick={() => navigate('/search')}
+          >
             <MagnifierIcon size={20} strokeWidth={2} />
           </button>
 
