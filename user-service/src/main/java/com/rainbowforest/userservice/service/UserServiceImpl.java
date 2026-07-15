@@ -30,8 +30,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Page<User> searchUsersAdmin(String search, Pageable pageable) {
-        String searchClean = (search == null || search.trim().isEmpty()) ? null : search.trim();
-        return userRepository.searchUsersAdmin(searchClean, pageable);
+        if (search == null || search.trim().isEmpty()) {
+            return userRepository.findAll(pageable);
+        }
+        String searchParam = "%" + search.trim().toLowerCase() + "%";
+        return userRepository.searchUsersAdmin(searchParam, pageable);
     }
 
     @Override
