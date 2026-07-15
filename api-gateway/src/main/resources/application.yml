@@ -8,8 +8,8 @@ spring:
   # Redis configuration
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   cloud:
     gateway:
@@ -17,60 +17,150 @@ spring:
         locator:
           enabled: true
           lower-case-service-id: true
+      # Default filters applied to ALL routes
+      default-filters:
+        # Security headers
+        - AddResponseHeader=X-Content-Type-Options, nosniff
+        - AddResponseHeader=X-Frame-Options, DENY
+        - AddResponseHeader=X-XSS-Protection, 1; mode=block
+        - AddResponseHeader=Referrer-Policy, strict-origin-when-cross-origin
+
       routes:
-        # User Service
+        # ── Sensitive: Login (20 req/min per IP) ──────────────────────────────
+        - id: user-service-login
+          uri: ${USER_SERVICE_URI:lb://user-service}
+          predicates:
+            - Path=/api/accounts/auth/login
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@sensitiveRedisRateLimiter}"
+                key-resolver: "#{@sensitiveKeyResolver}"
+                deny-empty-key: true
+
+        # ── Sensitive: Registration (20 req/min per IP) ───────────────────────
+        - id: user-service-register
+          uri: ${USER_SERVICE_URI:lb://user-service}
+          predicates:
+            - Path=/api/accounts/auth/registration
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@sensitiveRedisRateLimiter}"
+                key-resolver: "#{@sensitiveKeyResolver}"
+                deny-empty-key: true
+
+        # ── Sensitive: Checkout / Place Order (20 req/min per IP) ────────────
+        - id: order-service-checkout
+          uri: ${ORDER_SERVICE_URI:lb://order-service}
+          predicates:
+            - Path=/api/shop/order/**
+            - Method=POST
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@sensitiveRedisRateLimiter}"
+                key-resolver: "#{@sensitiveKeyResolver}"
+                deny-empty-key: true
+
+        # ── General: User Service (100 req/min) ───────────────────────────────
         - id: user-service
-          uri: ${USER_SERVICE_URI:http://localhost:8811}
+          uri: ${USER_SERVICE_URI:lb://user-service}
           predicates:
             - Path=/api/accounts/**
           filters:
             - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
 
-        # Product Catalog Service
+        # ── General: Product Catalog Service (100 req/min) ────────────────────
         - id: product-catalog-service
-          uri: ${PRODUCT_CATALOG_SERVICE_URI:http://localhost:8812}
+          uri: ${PRODUCT_CATALOG_SERVICE_URI:lb://product-catalog-service}
           predicates:
             - Path=/api/catalog/**
           filters:
             - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
 
-        # Order Service
+        # ── General: Order Service (100 req/min) ──────────────────────────────
         - id: order-service
-          uri: http://localhost:8813
+          uri: ${ORDER_SERVICE_URI:lb://order-service}
           predicates:
             - Path=/api/shop/**
           filters:
             - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
 
-        # Payment Service
+        # ── General: Payment Service (100 req/min) ────────────────────────────
         - id: payment-service
-          uri: http://localhost:8815
+          uri: ${PAYMENT_SERVICE_URI:lb://payment-service}
           predicates:
             - Path=/api/payments/**
           filters:
             - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
 
-        # Notification Service
+        # ── General: Notification Service (100 req/min) ───────────────────────
         - id: notification-service
-          uri: http://localhost:8816
+          uri: ${NOTIFICATION_SERVICE_URI:lb://notification-service}
           predicates:
             - Path=/api/notifications/**
           filters:
             - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
 
-        # Product Recommendation Service
+        # ── General: Product Recommendation Service (100 req/min) ─────────────
         - id: product-recommendation-service
-          uri: http://localhost:8814
+          uri: ${PRODUCT_RECOMMENDATION_SERVICE_URI:lb://product-recommendation-service}
           predicates:
             - Path=/api/review/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
+
 
 # Eureka client
 eureka:
+  instance:
+    prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:true}
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+  endpoint:
+    health:
+      show-details: always
 
 # Springdoc OpenAPI Aggregation configuration
 springdoc:
