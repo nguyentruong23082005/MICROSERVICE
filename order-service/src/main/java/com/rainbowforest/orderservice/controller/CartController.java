@@ -1,117 +1,101 @@
 package com.rainbowforest.orderservice.controller;
 
+import com.rainbowforest.orderservice.exception.ProductNotFoundException;
+import com.rainbowforest.orderservice.exception.ProductServiceUnavailableException;
 import com.rainbowforest.orderservice.http.header.HeaderGenerator;
 import com.rainbowforest.orderservice.service.CartService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
-import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 public class CartController {
 
-    @Autowired
-    CartService cartService;
-    
-    @Autowired
-    private HeaderGenerator headerGenerator;
+    private final CartService cartService;
+    private final HeaderGenerator headerGenerator;
 
-    // ── Endpoints nhận cartId qua Cookie (API gốc) ─────────────────────────
+    public CartController(CartService cartService, HeaderGenerator headerGenerator) {
+        this.cartService = cartService;
+        this.headerGenerator = headerGenerator;
+    }
 
     @GetMapping(value = "/cart")
     public ResponseEntity<List<Object>> getCart(@RequestHeader(value = "Cookie") String cartId) {
         List<Object> cart = cartService.getCart(cartId);
-        if (!cart.isEmpty()) {
-            return new ResponseEntity<>(cart, headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
-        }
-        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(cart, headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
     }
 
     @PostMapping(value = "/cart", params = {"productId", "quantity"})
     public ResponseEntity<List<Object>> addItemToCart(
             @RequestParam("productId") Long productId,
             @RequestParam("quantity") Integer quantity,
-            @RequestHeader(value = "Cookie") String cartId,
-            HttpServletRequest request) {
-        List<Object> cart = cartService.getCart(cartId);
-        if (cart != null) {
-            if (cart.isEmpty()) {
-                cartService.addItemToCart(cartId, productId, quantity);
-            } else {
-                if (cartService.checkIfItemIsExist(cartId, productId)) {
-                    cartService.changeItemQuantity(cartId, productId, quantity);
-                } else {
-                    cartService.addItemToCart(cartId, productId, quantity);
-                }
-            }
-            // BUG FIX: trả về cart SAU khi thêm/cập nhật
-            List<Object> updatedCart = cartService.getCart(cartId);
-            return new ResponseEntity<>(updatedCart,
-                    headerGenerator.getHeadersForSuccessPostMethod(request, Long.parseLong(cartId)),
-                    HttpStatus.CREATED);
-        }
-        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.BAD_REQUEST);
+            @RequestHeader(value = "Cookie") String cartId) {
+        return addOrUpdateCartItem(cartId, productId, quantity);
     }
 
     @DeleteMapping(value = "/cart", params = "productId")
     public ResponseEntity<Void> removeItemFromCart(
             @RequestParam("productId") Long productId,
             @RequestHeader(value = "Cookie") String cartId) {
-        List<Object> cart = cartService.getCart(cartId);
-        if (cart != null) {
-            cartService.deleteItemFromCart(cartId, productId);
-            return new ResponseEntity<>(headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
-        }
-        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+        return removeCartItem(cartId, productId);
     }
-
-    // ── Endpoints nhận cartId qua Path (dễ test bằng curl/Postman) ─────────
 
     @GetMapping(value = "/cart/{cartId}")
     public ResponseEntity<List<Object>> getCartByPath(@PathVariable("cartId") String cartId) {
         List<Object> cart = cartService.getCart(cartId);
-        if (!cart.isEmpty()) {
-            return new ResponseEntity<>(cart, headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
-        }
-        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(cart, headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
     }
 
     @PostMapping(value = "/cart/{cartId}/items", params = {"productId", "quantity"})
     public ResponseEntity<List<Object>> addItemToCartByPath(
             @PathVariable("cartId") String cartId,
             @RequestParam("productId") Long productId,
-            @RequestParam("quantity") Integer quantity,
-            HttpServletRequest request) {
-        List<Object> cart = cartService.getCart(cartId);
-        if (cart != null) {
-            if (cart.isEmpty()) {
-                cartService.addItemToCart(cartId, productId, quantity);
-            } else {
-                if (cartService.checkIfItemIsExist(cartId, productId)) {
-                    cartService.changeItemQuantity(cartId, productId, quantity);
-                } else {
-                    cartService.addItemToCart(cartId, productId, quantity);
-                }
-            }
-            List<Object> updatedCart = cartService.getCart(cartId);
-            return new ResponseEntity<>(updatedCart,
-                    headerGenerator.getHeadersForSuccessGetMethod(),
-                    HttpStatus.CREATED);
-        }
-        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.BAD_REQUEST);
+            @RequestParam("quantity") Integer quantity) {
+        return addOrUpdateCartItem(cartId, productId, quantity);
     }
 
     @DeleteMapping(value = "/cart/{cartId}/items", params = "productId")
     public ResponseEntity<Void> removeItemFromCartByPath(
             @PathVariable("cartId") String cartId,
             @RequestParam("productId") Long productId) {
-        List<Object> cart = cartService.getCart(cartId);
-        if (cart != null) {
-            cartService.deleteItemFromCart(cartId, productId);
-            return new ResponseEntity<>(headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
+        return removeCartItem(cartId, productId);
+    }
+
+    private ResponseEntity<List<Object>> addOrUpdateCartItem(String cartId, Long productId, Integer quantity) {
+        try {
+            List<Object> updatedCart = cartService.addOrUpdateItem(cartId, productId, quantity);
+            if (updatedCart == null) {
+                return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.BAD_REQUEST);
+            }
+            return new ResponseEntity<>(
+                    updatedCart,
+                    headerGenerator.getHeadersForSuccessGetMethod(),
+                    HttpStatus.CREATED);
+        } catch (IllegalArgumentException exception) {
+            return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.BAD_REQUEST);
+        } catch (ProductNotFoundException exception) {
+            return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+        } catch (ProductServiceUnavailableException exception) {
+            return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.SERVICE_UNAVAILABLE);
         }
-        return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+    }
+
+    private ResponseEntity<Void> removeCartItem(String cartId, Long productId) {
+        try {
+            if (!cartService.removeItem(cartId, productId)) {
+                return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.NOT_FOUND);
+            }
+            return new ResponseEntity<>(headerGenerator.getHeadersForSuccessGetMethod(), HttpStatus.OK);
+        } catch (IllegalArgumentException exception) {
+            return new ResponseEntity<>(headerGenerator.getHeadersForError(), HttpStatus.BAD_REQUEST);
+        }
     }
 }

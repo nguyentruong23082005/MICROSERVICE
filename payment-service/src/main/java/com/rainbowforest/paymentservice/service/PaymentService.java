@@ -11,6 +11,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class PaymentService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository paymentRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -42,30 +46,67 @@ public class PaymentService {
     }
 
     /**
-     * Xử lý thanh toán theo Saga.
-     * forceFailure=true → giả lập thanh toán thất bại (demo mục đích).
+     * Creates the payment intent from the trusted order-created event.
+     * Online payment is completed only after a verified gateway callback.
      */
     @CacheEvict(value = "revenue", allEntries = true)
     public Payment processPayment(OrderCreatedEvent event) {
-        boolean forceFailure = Boolean.TRUE.equals(event.getForceFailure());
-
         Payment payment = new Payment();
         payment.setOrderId(event.getOrderId());
         payment.setUserId(event.getUserId());
         payment.setAmount(event.getTotal());
-        payment.setPaidAt(LocalDateTime.now());
 
-        if (forceFailure) {
+        if (Boolean.TRUE.equals(event.getForceFailure())) {
             payment.setStatus("FAILED");
+            payment.setPaidAt(LocalDateTime.now());
             Payment saved = paymentRepository.save(payment);
             publishFailedEvent(saved, "Force failure requested by caller");
             return saved;
         }
 
-        payment.setStatus("COMPLETED");
-        Payment saved = paymentRepository.save(payment);
-        publishCompletedEvent(saved);
-        return saved;
+        payment.setStatus("PENDING");
+        return paymentRepository.save(payment);
+    }
+
+    /**
+     * Returns the trusted amount for the latest pending payment intent.
+     * A projection is returned so callers cannot mutate the persisted entity.
+     */
+    public GatewayPaymentIntent getPendingGatewayIntent(Long orderId) {
+        Payment payment = paymentRepository.findFirstByOrderIdOrderByIdDesc(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment intent not found for order"));
+        if (!"PENDING".equals(payment.getStatus())) {
+            throw new IllegalStateException("Payment intent is not pending");
+        }
+        if (payment.getAmount() == null || payment.getAmount().signum() <= 0) {
+            throw new IllegalStateException("Payment intent has an invalid amount");
+        }
+        return new GatewayPaymentIntent(payment.getOrderId(), payment.getAmount());
+    }
+
+    public record GatewayPaymentIntent(Long orderId, BigDecimal amount) {}
+
+    /**
+     * Associates a gateway transaction with the latest persisted payment intent.
+     * The amount is intentionally read from the database and never accepted from the client.
+     */
+    public Payment prepareGatewayPayment(Long orderId, String method, String transactionRef) {
+        if (!"VNPAY".equals(method) && !"MOMO".equals(method)) {
+            throw new IllegalArgumentException("Unsupported online payment method");
+        }
+        if (transactionRef == null || transactionRef.isBlank()) {
+            throw new IllegalArgumentException("Transaction reference is required");
+        }
+
+        Payment payment = paymentRepository.findFirstByOrderIdOrderByIdDesc(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment intent not found for order"));
+        if (!"PENDING".equals(payment.getStatus())) {
+            throw new IllegalStateException("Payment intent is not pending");
+        }
+
+        payment.setPaymentMethod(method);
+        payment.setTransactionRef(transactionRef);
+        return paymentRepository.save(payment);
     }
 
     /** Thống kê doanh thu — kết quả được cache Redis 5 phút */
@@ -100,6 +141,54 @@ public class PaymentService {
 
     public List<Payment> getAllPayments() {
         return paymentRepository.findAll();
+    }
+
+    /**
+     * Processes a signature-verified gateway callback against its persisted intent.
+     * The repository lookup uses a database write lock so concurrent retries are idempotent.
+     */
+    @CacheEvict(value = "revenue", allEntries = true)
+    @org.springframework.transaction.annotation.Transactional
+    public void processGatewayCallback(
+            Long orderId,
+            BigDecimal amount,
+            String method,
+            String transactionRef,
+            String status) {
+        Payment payment = paymentRepository.findByTransactionRef(transactionRef)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown payment transaction"));
+
+        validateGatewayCallback(payment, orderId, amount, method);
+        if (!"PENDING".equals(payment.getStatus())) {
+            log.info("[Payment] Ignoring duplicate gateway callback for transaction {}", transactionRef);
+            return;
+        }
+        if (!"COMPLETED".equals(status) && !"FAILED".equals(status)) {
+            throw new IllegalArgumentException("Unsupported payment status");
+        }
+
+        payment.setStatus(status);
+        payment.setPaidAt(LocalDateTime.now());
+        Payment saved = paymentRepository.save(payment);
+
+        if ("COMPLETED".equals(status)) {
+            publishCompletedEvent(saved);
+            log.info("[Payment] Gateway IPN: Order {} paid via {} (TxnRef: {})", orderId, method, transactionRef);
+        } else {
+            publishFailedEvent(saved, "Gateway reported failure or user cancelled");
+            log.warn("[Payment] Gateway IPN: Order {} FAILED via {} (TxnRef: {})", orderId, method, transactionRef);
+        }
+    }
+
+    private void validateGatewayCallback(Payment payment, Long orderId, BigDecimal amount, String method) {
+        boolean amountMatches = payment.getAmount() != null
+                && amount != null
+                && payment.getAmount().compareTo(amount) == 0;
+        if (!payment.getOrderId().equals(orderId)
+                || !amountMatches
+                || !method.equals(payment.getPaymentMethod())) {
+            throw new IllegalArgumentException("Gateway callback does not match payment intent");
+        }
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────

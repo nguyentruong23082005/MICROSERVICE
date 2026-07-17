@@ -108,6 +108,19 @@ spring:
                 key-resolver: "#{@globalKeyResolver}"
                 deny-empty-key: false
 
+        # ── General: Shipping (order-service sub-path) (100 req/min) ──────────
+        - id: order-service-shipping
+          uri: ${ORDER_SERVICE_URI:lb://order-service}
+          predicates:
+            - Path=/api/shipping/**
+          filters:
+            - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
+
         # ── General: Payment Service (100 req/min) ────────────────────────────
         - id: payment-service
           uri: ${PAYMENT_SERVICE_URI:lb://payment-service}
@@ -141,11 +154,46 @@ spring:
             - Path=/api/review/**
           filters:
             - StripPrefix=2
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter: "#{@globalRedisRateLimiter}"
                 key-resolver: "#{@globalKeyResolver}"
                 deny-empty-key: false
+
+        # ── General: AI Chatbot Route (100 req/min) ──────────────────────────
+        - id: chatbot-service
+          uri: ${PRODUCT_RECOMMENDATION_SERVICE_URI:lb://product-recommendation-service}
+          predicates:
+            - Path=/api/chat, /api/chat/**, /api/chatbot, /api/chatbot/**
+          filters:
+            - StripPrefix=1
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
+
+        # ── General: Support Chat REST + WebSocket (100 req/min) ─────────────
+        - id: support-chat-rest-service
+          uri: ${PRODUCT_RECOMMENDATION_SERVICE_URI:lb://product-recommendation-service}
+          predicates:
+            - Path=/api/support-chat, /api/support-chat/**
+          filters:
+            - StripPrefix=1
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@globalRedisRateLimiter}"
+                key-resolver: "#{@globalKeyResolver}"
+                deny-empty-key: false
+
+        - id: support-chat-websocket-service
+          uri: ${PRODUCT_RECOMMENDATION_SERVICE_WS_URI:lb:ws://product-recommendation-service}
+          predicates:
+            - Path=/ws/support-chat, /ws/support-chat/**
+
 
 
 app:

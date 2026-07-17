@@ -3,8 +3,6 @@ package com.rainbowforest.recommendationservice.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.rainbowforest.recommendationservice.feignClient.ProductClient;
-import com.rainbowforest.recommendationservice.feignClient.UserClient;
 import com.rainbowforest.recommendationservice.model.Product;
 import com.rainbowforest.recommendationservice.model.Recommendation;
 import com.rainbowforest.recommendationservice.model.User;
@@ -21,8 +19,10 @@ import java.util.ArrayList;
 import java.util.List;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @AutoConfigureMockMvc
@@ -45,18 +45,14 @@ public class RecommendationControllerTests {
 
     @MockBean
     private RecommendationService recommendationService;
-    
-    @MockBean
-    private ProductClient productClient;
-    
-    @MockBean
-    private UserClient userClient;
 
     @BeforeEach
     public void setUp(){
         user = new User();
+        user.setId(USER_ID);
         user.setUserName(USER_NAME);
         product = new Product();
+        product.setId(PRODUCT_ID);
         product.setProductName(PRODUCT_NAME);
         recommendation = new Recommendation();
         recommendation.setId(RECOMMENDATION_ID);
@@ -86,7 +82,7 @@ public class RecommendationControllerTests {
     }
     
     @Test
-    public void get_all_rating_controller_should_return404_when_recommendationList_isEmpty() throws Exception {
+    public void get_all_rating_controller_should_return200_when_recommendationList_isEmpty() throws Exception {
     	//given
     	List<Recommendation> recommendations = new ArrayList<Recommendation>();
     	
@@ -95,8 +91,10 @@ public class RecommendationControllerTests {
 
         //then
         mockMvc.perform(get("/recommendations").param("name", PRODUCT_NAME))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
                           
         verify(recommendationService, times(1)).getAllRecommendationByProductName(anyString());
         verifyNoMoreInteractions(recommendationService);
@@ -111,9 +109,7 @@ public class RecommendationControllerTests {
         String requestJson = objectWriter.writeValueAsString(recommendation);
         
         //when
-        when(productClient.getProductById(PRODUCT_ID)).thenReturn(product);
-        when(userClient.getUserById(USER_ID)).thenReturn(user);
-        when(recommendationService.saveRecommendation(any(Recommendation.class))).thenReturn(recommendation);
+        when(recommendationService.createRecommendation(USER_ID, PRODUCT_ID, RATING)).thenReturn(recommendation);
         
         //then
         mockMvc.perform(post("/{userId}/recommendations/{productId}",USER_ID, PRODUCT_ID)
@@ -124,7 +120,79 @@ public class RecommendationControllerTests {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.rating").value(RATING));
 
-        verify(recommendationService, times(1)).saveRecommendation(any(Recommendation.class));
+        verify(recommendationService, times(1)).createRecommendation(USER_ID, PRODUCT_ID, RATING);
+        verifyNoMoreInteractions(recommendationService);
+    }
+
+    @Test
+    public void get_reviews_controller_should_return200_for_product_reviews() throws Exception {
+        recommendation.setTitle("Rất hài lòng");
+        recommendation.setComment("Sản phẩm chắc chắn");
+        recommendation.setStatus("APPROVED");
+        when(recommendationService.getReviews(PRODUCT_ID, null)).thenReturn(recommendations);
+
+        mockMvc.perform(get("/reviews").param("productId", PRODUCT_ID.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[0].id").value(RECOMMENDATION_ID))
+                .andExpect(jsonPath("$[0].rating").value(RATING))
+                .andExpect(jsonPath("$[0].title").value("Rất hài lòng"))
+                .andExpect(jsonPath("$[0].comment").value("Sản phẩm chắc chắn"))
+                .andExpect(jsonPath("$[0].status").value("APPROVED"));
+
+        verify(recommendationService, times(1)).getReviews(PRODUCT_ID, null);
+    }
+
+    @Test
+    public void create_review_controller_should_return201_when_valid_request() throws Exception {
+        String requestJson = """
+                {
+                  "rating": 5,
+                  "title": "Rất hài lòng",
+                  "comment": "Sản phẩm chắc chắn"
+                }
+                """;
+        recommendation.setTitle("Rất hài lòng");
+        recommendation.setComment("Sản phẩm chắc chắn");
+        recommendation.setStatus("APPROVED");
+
+        when(recommendationService.createReview(eq(USER_ID), eq(PRODUCT_ID), eq(5), eq("Rất hài lòng"), eq("Sản phẩm chắc chắn")))
+                .thenReturn(recommendation);
+
+        mockMvc.perform(post("/{userId}/reviews/{productId}", USER_ID, PRODUCT_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.rating").value(RATING))
+                .andExpect(jsonPath("$.title").value("Rất hài lòng"))
+                .andExpect(jsonPath("$.comment").value("Sản phẩm chắc chắn"));
+
+        verify(recommendationService, times(1))
+                .createReview(eq(USER_ID), eq(PRODUCT_ID), eq(5), eq("Rất hài lòng"), eq("Sản phẩm chắc chắn"));
+    }
+
+    @Test
+    public void update_review_status_controller_should_return200_when_review_exists() throws Exception {
+        recommendation.setStatus("HIDDEN");
+        when(recommendationService.updateReviewStatus(RECOMMENDATION_ID, "HIDDEN"))
+                .thenReturn(recommendation);
+
+        mockMvc.perform(put("/reviews/{id}/status", RECOMMENDATION_ID).param("status", "HIDDEN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("HIDDEN"));
+
+        verify(recommendationService, times(1)).updateReviewStatus(RECOMMENDATION_ID, "HIDDEN");
+    }
+
+    @Test
+    public void delete_review_controller_should_return204_when_review_exists() throws Exception {
+        when(recommendationService.deleteRecommendation(RECOMMENDATION_ID)).thenReturn(true);
+
+        mockMvc.perform(delete("/reviews/{id}", RECOMMENDATION_ID))
+                .andExpect(status().isNoContent());
+
+        verify(recommendationService, times(1)).deleteRecommendation(RECOMMENDATION_ID);
         verifyNoMoreInteractions(recommendationService);
     }
 }

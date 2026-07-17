@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import com.rainbowforest.orderservice.domain.Product;
 
-@FeignClient(name = "product-catalog-service", url = "http://localhost:8812/")
+@FeignClient(name = "product-catalog-service", fallbackFactory = ProductClientFallbackFactory.class)
 public interface ProductClient {
 
     @GetMapping(value = "/products/{id}")

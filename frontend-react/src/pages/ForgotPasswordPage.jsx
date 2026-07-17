@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { forgotPassword } from '../features/auth/services/authService.js';
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
@@ -8,14 +9,20 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // TODO Phase 8.6 backend: POST /api/accounts/auth/forgot-password
-    await new Promise(r => setTimeout(r, 800)); // simulate request
-    setSent(true);
-    setLoading(false);
+    setError('');
+    try {
+      await forgotPassword(email.trim());
+      setSent(true);
+    } catch {
+      setError(t('common.error'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (sent) {
@@ -77,6 +84,8 @@ export default function ForgotPasswordPage() {
               }}
             />
           </div>
+
+          {error && <p role="alert" style={{ color: '#b42318', marginTop: '14px', fontSize: '0.875rem' }}>{error}</p>}
 
           <button id="forgot-submit" type="submit" disabled={loading} className="btn btn-primary"
             style={{ padding: '14px', fontSize: '1rem', fontWeight: 600, borderRadius: '10px', marginTop: '8px' }}>

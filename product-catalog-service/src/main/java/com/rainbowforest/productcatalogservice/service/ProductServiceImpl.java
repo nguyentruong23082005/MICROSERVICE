@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -35,14 +36,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<Product> searchProductsAdmin(String name, String category, Boolean inStock, Pageable pageable) {
+    public Page<Product> searchProductsAdmin(String name, String category, Boolean inStock, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
         String nameClean = (name == null || name.trim().isEmpty()) ? "" : name.trim();
         String catClean = (category == null || category.trim().isEmpty()) ? "" : category.trim();
         String inStockStr = "ALL";
         if (inStock != null) {
             inStockStr = inStock ? "TRUE" : "FALSE";
         }
-        return productRepository.searchProductsAdmin(nameClean, catClean, inStockStr, pageable);
+        return productRepository.searchProductsAdmin(nameClean, catClean, inStockStr, minPrice, maxPrice, pageable);
     }
 
     @Override
@@ -66,7 +67,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> getAllProductsByName(String name) {
-        return productRepository.findAllByProductNameOrderByIdAsc(name);
+        return productRepository.findAllByProductNameContainingIgnoreCaseOrderByIdAsc(name);
     }
 
     @Override
@@ -102,11 +103,17 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public boolean deleteProduct(Long productId) {
-        if (productId == null || !productRepository.existsById(productId)) {
+        if (productId == null) {
             return false;
         }
-        productRepository.deleteById(productId);
-        return true;
+
+        return productRepository.findById(productId)
+                .map(product -> {
+                    productRepository.delete(product);
+                    productRepository.flush();
+                    return true;
+                })
+                .orElse(false);
     }
 
     private void prepareProductForSave(Product product) {

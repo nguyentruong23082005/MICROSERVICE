@@ -42,21 +42,25 @@ export default function OrderHistoryPage() {
   useEffect(() => {
     if (!user?.id) return;
     let active = true;
-    setLoading(true);
 
-    getUserOrders(user.id)
-      .then(data => {
-        if (!active) return;
-        const list = Array.isArray(data) ? data : (data?.content || []);
-        // newest first
-        setOrders(list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-        setLoading(false);
-      })
-      .catch(err => {
-        if (!active) return;
-        setError(err.message || t('common.error'));
-        setLoading(false);
-      });
+    Promise.resolve().then(() => {
+      if (!active) return;
+      setLoading(true);
+
+      getUserOrders(user.id)
+        .then(data => {
+          if (!active) return;
+          const list = Array.isArray(data) ? data : (data?.content || []);
+          // newest first
+          setOrders(list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+          setLoading(false);
+        })
+        .catch(err => {
+          if (!active) return;
+          setError(err.message || t('common.error'));
+          setLoading(false);
+        });
+    });
 
     return () => { active = false; };
   }, [user?.id, t]);

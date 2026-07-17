@@ -27,7 +27,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/**").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/**", "/shipping/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new GatewayHeaderFilter(), UsernamePasswordAuthenticationFilter.class);
@@ -39,7 +39,7 @@ public class SecurityConfig {
         protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                 throws ServletException, IOException {
             String path = request.getRequestURI();
-            if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/actuator")) {
+            if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/actuator") || path.startsWith("/shipping")) {
                 filterChain.doFilter(request, response);
                 return;
             }

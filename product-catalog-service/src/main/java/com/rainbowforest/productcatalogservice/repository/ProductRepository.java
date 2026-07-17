@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import com.rainbowforest.productcatalogservice.entity.Product;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
@@ -26,7 +27,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     List<Product> findAllByCategorySlugOrLegacyCategory(@Param("categorySlug") String categorySlug);
 
-    List<Product> findAllByProductNameOrderByIdAsc(String name);
+    List<Product> findAllByProductNameContainingIgnoreCaseOrderByIdAsc(String name);
 
     List<Product> findAllByRoomOrderByIdAsc(String room);
 
@@ -38,10 +39,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             where (:name = '' or lower(p.productName) like lower(concat('%', :name, '%')))
               and (:category = '' or p.category = :category or lower(c.slug) = lower(:category))
               and (:inStockStr = 'ALL' or (:inStockStr = 'TRUE' and p.availability > 0) or (:inStockStr = 'FALSE' and p.availability = 0))
+              and (:minPrice is null or p.price >= :minPrice)
+              and (:maxPrice is null or p.price <= :maxPrice)
             """)
     Page<Product> searchProductsAdmin(
             @Param("name") String name,
             @Param("category") String category,
             @Param("inStockStr") String inStockStr,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
             Pageable pageable);
 }

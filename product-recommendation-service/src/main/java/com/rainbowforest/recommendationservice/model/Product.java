@@ -1,8 +1,8 @@
 package com.rainbowforest.recommendationservice.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Entity
@@ -10,14 +10,27 @@ import java.util.List;
 public class Product {
 
     @Id
-    @GeneratedValue (strategy = GenerationType.IDENTITY)
     private Long id;
+
     @Column (name = "product_name")
     private String productName;
+
+    @Column(name = "price")
+    private BigDecimal price;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "category")
+    private String category;
 
     @OneToMany (mappedBy = "product")
     @JsonIgnore
     private List<Recommendation> recomendations;
+
+    @OneToMany(mappedBy = "product")
+    @JsonIgnore
+    private List<WishlistItem> wishlistItems;
     
     public Product() {
     	
@@ -28,6 +41,14 @@ public class Product {
         this.recomendations = recomendations;
     }
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getProductName() {
         return productName;
     }
@@ -36,11 +57,43 @@ public class Product {
         this.productName = productName;
     }
 
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
     public List<Recommendation> getRecomendations() {
         return recomendations;
     }
 
     public void setRecomendations(List<Recommendation> recomendations) {
         this.recomendations = recomendations;
+    }
+
+    public List<WishlistItem> getWishlistItems() {
+        return wishlistItems;
+    }
+
+    public void setWishlistItems(List<WishlistItem> wishlistItems) {
+        this.wishlistItems = wishlistItems;
     }
 }

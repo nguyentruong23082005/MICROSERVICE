@@ -1,5 +1,6 @@
 package com.rainbowforest.productcatalogservice.messaging;
 
+import java.util.List;
 import com.rainbowforest.productcatalogservice.event.OrderCreatedEvent;
 import com.rainbowforest.productcatalogservice.event.OrderItemEvent;
 import com.rainbowforest.productcatalogservice.event.PaymentCompletedEvent;
@@ -44,34 +45,56 @@ public class PaymentCompletedInventoryConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentCompletedInventoryConsumer.class);
     private final ProductRepository productRepository;
-
+    
     public PaymentCompletedInventoryConsumer(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
 
     /**
-     * Lắng nghe OrderCreatedEvent để trừ kho — nhưng chỉ sau khi
-     * payment-service gửi PaymentCompleted (trong Saga thực tế).
-     *
-     * Cho bài tập: catalog nhận OrderCreated và trừ kho.
-     * Đây là consumer THAY THẾ cho OrderCreatedInventoryConsumer cũ —
-     * cùng logic nhưng group-id mới, thể hiện Saga participation.
+     * Lắng nghe OrderCreatedEvent để cập nhật kho hàng.
+     * - Nếu status là "CANCELLED": tiến hành hoàn kho (cộng lại số lượng).
+     * - Nếu status khác (PENDING, PAYMENT_EXPECTED...): tiến hành trừ kho ngay lập tức.
      */
     @Transactional
     @KafkaListener(
             topics = "${app.kafka.topics.order-created:order-created}",
-            groupId = "product-catalog-saga-service"
+            groupId = "product-catalog-saga-order-listener"
     )
     public void handleOrderCreatedForInventory(OrderCreatedEvent event) {
-        if (event == null || event.getItems() == null) {
+        if (event == null || event.getOrderId() == null || event.getItems() == null) {
             return;
         }
-        log.info("[SAGA-CATALOG] Nhận OrderCreated #{} — chờ PaymentCompleted để xác nhận trừ kho", event.getOrderId());
-        // Trong Saga thực tế: giữ lại items, chờ PaymentCompleted
-        // Bài lab: trực tiếp trừ kho để demo flow
-        for (OrderItemEvent item : event.getItems()) {
-            reduceAvailability(item, event.getOrderId());
+
+        String status = event.getStatus();
+        if ("CANCELLED".equalsIgnoreCase(status)) {
+            log.info("[SAGA-CATALOG] Nhận sự kiện hủy đơn #{}. Tiến hành hoàn kho cho {} items.", event.getOrderId(), event.getItems().size());
+            for (OrderItemEvent item : event.getItems()) {
+                restoreAvailability(item, event.getOrderId());
+            }
+        } else if ("PAYMENT_EXPECTED".equalsIgnoreCase(status) || "PENDING".equalsIgnoreCase(status)) {
+            log.info("[SAGA-CATALOG] Nhận đơn hàng mới #{} (status: {}). Tiến hành trừ kho ngay lập tức cho {} items.", event.getOrderId(), status, event.getItems().size());
+            for (OrderItemEvent item : event.getItems()) {
+                reduceAvailability(item, event.getOrderId());
+            }
+        } else {
+            log.info("[SAGA-CATALOG] Bỏ qua cập nhật kho cho đơn #{} với status {}", event.getOrderId(), status);
         }
+    }
+
+    /**
+     * Lắng nghe PaymentCompletedEvent từ payment-service.
+     * Vì đã trừ kho ngay khi đặt hàng, tại đây ta chỉ ghi nhận thông tin log.
+     */
+    @Transactional
+    @KafkaListener(
+            topics = "${app.kafka.topics.payment-completed:payment-completed}",
+            groupId = "product-catalog-saga-payment-listener"
+    )
+    public void handlePaymentCompletedForInventory(PaymentCompletedEvent event) {
+        if (event == null || event.getOrderId() == null) {
+            return;
+        }
+        log.info("[SAGA-CATALOG] Nhận PaymentCompleted #{} — Đã xác nhận thanh toán thành công (kho hàng đã trừ trước đó)", event.getOrderId());
     }
 
     private void reduceAvailability(OrderItemEvent item, Long orderId) {
@@ -83,7 +106,21 @@ public class PaymentCompletedInventoryConsumer {
             int next = Math.max(0, before - item.getQuantity());
             product.setAvailability(next);
             productRepository.save(product);
-            log.info("[SAGA-CATALOG] Trừ kho sản phẩm #{} cho đơn #{}: {} → {}",
+            log.info("[SAGA-CATALOG] [TRỪ KHO] Sản phẩm #{} cho đơn #{}: {} → {}",
+                    item.getProductId(), orderId, before, next);
+        });
+    }
+
+    private void restoreAvailability(OrderItemEvent item, Long orderId) {
+        if (item == null || item.getProductId() == null || item.getQuantity() <= 0) {
+            return;
+        }
+        productRepository.findById(item.getProductId()).ifPresent(product -> {
+            int before = product.getAvailability();
+            int next = before + item.getQuantity();
+            product.setAvailability(next);
+            productRepository.save(product);
+            log.info("[SAGA-CATALOG] [HOÀN KHO] Trả lại sản phẩm #{} cho đơn #{}: {} → {}",
                     item.getProductId(), orderId, before, next);
         });
     }

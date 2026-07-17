@@ -82,4 +82,44 @@ public class NotificationService {
     public List<Notification> getAdminNotifications() {
         return notificationRepository.findAllByType("ADMIN");
     }
+
+    public long countUnreadNotifications(Long userId) {
+        return notificationRepository.countByUserIdAndReadFalse(userId);
+    }
+
+    public Notification markAsRead(String notificationId, Long currentUserId) {
+        return markAsRead(notificationId, currentUserId, false);
+    }
+
+    public Notification markAsRead(String notificationId, Long currentUserId, boolean isAdmin) {
+        Notification existing = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+        boolean isAdminNotification = "ADMIN".equals(existing.getType());
+        boolean canReadAdminNotification = isAdmin && isAdminNotification;
+        boolean ownsUserNotification = !isAdminNotification
+                && currentUserId != null
+                && currentUserId.equals(existing.getUserId());
+        if (!canReadAdminNotification && !ownsUserNotification) {
+            throw new IllegalArgumentException("Notification not found: " + notificationId);
+        }
+        Notification updated = copyOf(existing);
+        updated.setRead(true);
+        return notificationRepository.save(updated);
+    }
+
+    private Notification copyOf(Notification source) {
+        Notification copy = new Notification();
+        copy.setId(source.getId());
+        copy.setUserId(source.getUserId());
+        copy.setOrderId(source.getOrderId());
+        copy.setPaymentId(source.getPaymentId());
+        copy.setType(source.getType());
+        copy.setCategory(source.getCategory());
+        copy.setMessage(source.getMessage());
+        copy.setStatus(source.getStatus());
+        copy.setRead(source.isRead());
+        copy.setCreatedAt(source.getCreatedAt());
+        copy.setMetadata(source.getMetadata() == null ? null : Map.copyOf(source.getMetadata()));
+        return copy;
+    }
 }

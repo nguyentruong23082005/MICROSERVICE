@@ -11,4 +11,6 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     List<Notification> findAllByType(String type);
 
     List<Notification> findAllByOrderId(Long orderId);
+
+    long countByUserIdAndReadFalse(Long userId);
 }

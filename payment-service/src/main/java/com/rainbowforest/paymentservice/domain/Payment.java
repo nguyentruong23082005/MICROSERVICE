@@ -13,7 +13,9 @@ public class Payment {
     private Long orderId;
     private Long userId;
     private BigDecimal amount;
-    private String status;
+    private String status;           // PENDING, COMPLETED, FAILED
+    private String paymentMethod;    // COD, VNPAY, MOMO
+    private String transactionRef;   // VNPay txnRef or MoMo orderId
     private LocalDateTime paidAt;
 
     public Long getId() { return id; }
@@ -26,6 +28,10 @@ public class Payment {
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public String getTransactionRef() { return transactionRef; }
+    public void setTransactionRef(String transactionRef) { this.transactionRef = transactionRef; }
     public LocalDateTime getPaidAt() { return paidAt; }
     public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
 }

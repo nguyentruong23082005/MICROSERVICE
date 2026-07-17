@@ -1,7 +1,6 @@
 package com.rainbowforest.recommendationservice.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -10,7 +9,6 @@ import java.util.List;
 public class User {
 
     @Id
-    @GeneratedValue (strategy = GenerationType.IDENTITY)
     private Long id;
     @Column (name = "user_name")
     private String userName;
@@ -18,6 +16,10 @@ public class User {
     @OneToMany (mappedBy = "user")
     @JsonIgnore
     private List<Recommendation> recomendations;
+
+    @OneToMany(mappedBy = "user")
+    @JsonIgnore
+    private List<WishlistItem> wishlistItems;
     
     public User() {
     	
@@ -26,6 +28,14 @@ public class User {
     public User(String userName, List<Recommendation> recomendations) {
         this.userName = userName;
         this.recomendations = recomendations;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getUserName() {
@@ -42,5 +52,13 @@ public class User {
 
     public void setRecomendations(List<Recommendation> recomendations) {
         this.recomendations = recomendations;
+    }
+
+    public List<WishlistItem> getWishlistItems() {
+        return wishlistItems;
+    }
+
+    public void setWishlistItems(List<WishlistItem> wishlistItems) {
+        this.wishlistItems = wishlistItems;
     }
 }

@@ -1,9 +1,16 @@
 package com.rainbowforest.userservice.controller;
 
+import com.rainbowforest.userservice.dto.RegistrationRequest;
+import com.rainbowforest.userservice.dto.UserResponse;
 import com.rainbowforest.userservice.entity.User;
 import com.rainbowforest.userservice.http.header.HeaderGenerator;
 import com.rainbowforest.userservice.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,11 +35,11 @@ public class UserController {
     }
 
     @GetMapping(value = "/users")
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<User> users = userService.getAllUsers();
         if (!users.isEmpty()) {
             return new ResponseEntity<>(
-                    users,
+                    toResponses(users),
                     headerGenerator.getHeadersForSuccessGetMethod(),
                     HttpStatus.OK);
         }
@@ -42,20 +49,22 @@ public class UserController {
     }
 
     @GetMapping(value = "/users", params = "name")
-    public ResponseEntity<User> getUserByName(@RequestParam("name") String userName) {
+    public ResponseEntity<UserResponse> getUserByName(@RequestParam("name") String userName) {
         User user = userService.getUserByName(userName);
         return respondWithUser(user);
     }
 
     @GetMapping(value = "/users/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable("id") Long id) {
+    public ResponseEntity<UserResponse> getUserById(@PathVariable("id") Long id) {
         User user = userService.getUserById(id);
         return respondWithUser(user);
     }
 
     @PostMapping(value = "/users")
-    public ResponseEntity<User> addUser(@RequestBody User user, HttpServletRequest request) {
-        return createUser(user, request);
+    public ResponseEntity<UserResponse> addUser(
+            @Valid @RequestBody RegistrationRequest registrationRequest,
+            HttpServletRequest request) {
+        return createUser(registrationRequest, request);
     }
 
     @GetMapping(value = "/admin/users")
@@ -65,30 +74,31 @@ public class UserController {
             @RequestParam(value = "search", required = false) String search) {
         
         if (page != null && size != null) {
-            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
-                    page, size, org.springframework.data.domain.Sort.by("id").ascending());
-            org.springframework.data.domain.Page<User> userPage = userService.searchUsersAdmin(search, pageable);
+            Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+            Page<UserResponse> userPage = userService.searchUsersAdmin(search, pageable).map(UserResponse::from);
             return new ResponseEntity<>(userPage, HttpStatus.OK);
         }
-        
+
         return new ResponseEntity<>(
-                userService.getAllUsers(),
+                toResponses(userService.getAllUsers()),
                 headerGenerator.getHeadersForSuccessGetMethod(),
                 HttpStatus.OK);
     }
 
     @GetMapping(value = "/admin/users/{id}")
-    public ResponseEntity<User> getUserByIdForAdmin(@PathVariable("id") Long id) {
+    public ResponseEntity<UserResponse> getUserByIdForAdmin(@PathVariable("id") Long id) {
         return getUserById(id);
     }
 
     @PostMapping(value = "/admin/users")
-    public ResponseEntity<User> addUserForAdmin(@RequestBody User user, HttpServletRequest request) {
-        return createUser(user, request);
+    public ResponseEntity<UserResponse> addUserForAdmin(
+            @Valid @RequestBody RegistrationRequest registrationRequest,
+            HttpServletRequest request) {
+        return createUser(registrationRequest, request);
     }
 
     @PutMapping(value = "/admin/users/{id}/status")
-    public ResponseEntity<User> updateUserStatusForAdmin(
+    public ResponseEntity<UserResponse> updateUserStatusForAdmin(
             @PathVariable("id") Long id,
             @RequestParam("active") boolean active) {
         User updated = userService.updateUserActive(id, active);
@@ -98,13 +108,13 @@ public class UserController {
                     HttpStatus.NOT_FOUND);
         }
         return new ResponseEntity<>(
-                updated,
+                UserResponse.from(updated),
                 headerGenerator.getHeadersForSuccessGetMethod(),
                 HttpStatus.OK);
     }
 
     @PutMapping(value = "/admin/users/{id}/role")
-    public ResponseEntity<User> updateUserRoleForAdmin(
+    public ResponseEntity<UserResponse> updateUserRoleForAdmin(
             @PathVariable("id") Long id,
             @RequestParam("roleName") String roleName) {
         try {
@@ -115,7 +125,7 @@ public class UserController {
                         HttpStatus.NOT_FOUND);
             }
             return new ResponseEntity<>(
-                    updated,
+                    UserResponse.from(updated),
                     headerGenerator.getHeadersForSuccessGetMethod(),
                     HttpStatus.OK);
         } catch (IllegalArgumentException exception) {
@@ -125,11 +135,14 @@ public class UserController {
         }
     }
 
-    private ResponseEntity<User> createUser(User user, HttpServletRequest request) {
+    private ResponseEntity<UserResponse> createUser(
+            RegistrationRequest registrationRequest,
+            HttpServletRequest request) {
         try {
+            User user = toEntity(registrationRequest);
             User saved = userService.saveUser(user);
             return new ResponseEntity<>(
-                    saved,
+                    UserResponse.from(saved),
                     headerGenerator.getHeadersForSuccessPostMethod(request, saved.getId()),
                     HttpStatus.CREATED);
         } catch (IllegalArgumentException exception) {
@@ -139,15 +152,23 @@ public class UserController {
         }
     }
 
-    private ResponseEntity<User> respondWithUser(User user) {
+    private ResponseEntity<UserResponse> respondWithUser(User user) {
         if (user != null) {
             return new ResponseEntity<>(
-                    user,
+                    UserResponse.from(user),
                     headerGenerator.getHeadersForSuccessGetMethod(),
                     HttpStatus.OK);
         }
         return new ResponseEntity<>(
                 headerGenerator.getHeadersForError(),
                 HttpStatus.NOT_FOUND);
+    }
+
+    private User toEntity(RegistrationRequest registrationRequest) {
+        return registrationRequest.toEntity();
+    }
+
+    private List<UserResponse> toResponses(List<User> users) {
+        return users.stream().map(UserResponse::from).toList();
     }
 }

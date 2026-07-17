@@ -1,0 +1,39 @@
+/* Neo-Bauhaus styles have been retired. 
+   These utility classes are kept empty or minimal to prevent breaking existing imports 
+   during the transition to the new Furniq minimalist design system. */
+
+.border-thick {}
+.border-thin {}
+.neo-shadow {}
+.neo-shadow-lg {}
+.neo-surface {}
+.neo-red {}
+.neo-gold {}
+.neo-ink {}
+.neo-title {}
+.neo-kicker {}
+.neo-panel {}
+.neo-interactive {}
+.neo-focus:focus-visible {}
+.neo-button {}
+.neo-button--primary {}
+.neo-button--secondary {}
+.neo-button--danger {}
+.neo-button--ghost {}
+.neo-field {}
+.neo-input {}
+.neo-field__error {}
+.neo-card {}
+.neo-badge {}
+.neo-badge--ink {}
+.neo-badge--red {}
+.neo-badge--gold {}
+.neo-badge--cream {}
+.neo-spinner {}
+.neo-spinner__mark {}
+.neo-modal {}
+.neo-modal__panel {}
+.neo-modal__header {}
+.neo-modal__close {}
+.neo-table-wrap {}
+.neo-table {}

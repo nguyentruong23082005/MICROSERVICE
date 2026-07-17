@@ -1,4 +1,17 @@
-import { get, post, put, del, request } from '../../../api/client.js';
+import {
+  get as apiGet,
+  post as apiPost,
+  put as apiPut,
+  del as apiDelete,
+  request as apiRequest,
+} from '../../../api/client.js';
+
+const ADMIN_OPTIONS = Object.freeze({ authScope: 'admin' });
+const get = (path) => apiGet(path, ADMIN_OPTIONS);
+const post = (path, data) => apiPost(path, data, ADMIN_OPTIONS);
+const put = (path, data) => apiPut(path, data, ADMIN_OPTIONS);
+const del = (path) => apiDelete(path, ADMIN_OPTIONS);
+const request = (path, options = {}) => apiRequest(path, { ...options, ...ADMIN_OPTIONS });
 
 const CATALOG = '/catalog';
 const ACCOUNTS = '/accounts';

@@ -5,24 +5,42 @@ import com.rainbowforest.orderservice.domain.Product;
 import com.rainbowforest.orderservice.feignclient.ProductClient;
 import com.rainbowforest.orderservice.redis.CartRedisRepository;
 import com.rainbowforest.orderservice.utilities.CartUtilities;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
 public class CartServiceImpl implements CartService {
 
-    @Autowired
-    private ProductClient productClient;
+    private final ProductClient productClient;
+    private final CartRedisRepository cartRedisRepository;
 
-    @Autowired
-    private CartRedisRepository cartRedisRepository;
+    public CartServiceImpl(ProductClient productClient, CartRedisRepository cartRedisRepository) {
+        this.productClient = productClient;
+        this.cartRedisRepository = cartRedisRepository;
+    }
 
     @Override
     public void addItemToCart(String cartId, Long productId, Integer quantity) {
         Product product = productClient.getProductById(productId);
         Item item = new Item(quantity,product, CartUtilities.getSubTotalForItem(product,quantity));
         cartRedisRepository.addItemToCart(cartId, item);
+    }
+
+    @Override
+    public List<Object> addOrUpdateItem(String cartId, Long productId, Integer quantity) {
+        if (cartId == null || productId == null || quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("Cart id, product id and positive quantity are required");
+        }
+        List<Object> cart = getCart(cartId);
+        if (cart == null) {
+            return null;
+        }
+        if (cart.isEmpty() || !checkIfItemIsExist(cartId, productId)) {
+            addItemToCart(cartId, productId, quantity);
+        } else {
+            changeItemQuantity(cartId, productId, quantity);
+        }
+        return getCart(cartId);
     }
 
     @Override
@@ -52,6 +70,19 @@ public class CartServiceImpl implements CartService {
                 cartRedisRepository.deleteItemFromCart(cartId, item);
             }
         }
+    }
+
+    @Override
+    public boolean removeItem(String cartId, Long productId) {
+        if (cartId == null || productId == null) {
+            throw new IllegalArgumentException("Cart id and product id are required");
+        }
+        List<Object> cart = getCart(cartId);
+        if (cart == null) {
+            return false;
+        }
+        deleteItemFromCart(cartId, productId);
+        return true;
     }
 
     @Override

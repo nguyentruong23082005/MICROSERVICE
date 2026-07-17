@@ -65,12 +65,6 @@ export default function SearchPage() {
     return () => clearTimeout(debounceRef.current);
   }, [query, doSearch, setSearchParams]);
 
-  // Also run on mount if URL has ?q=
-  useEffect(() => {
-    if (initialQuery) doSearch(initialQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div className="shell section-padding">
       {/* Back button */}

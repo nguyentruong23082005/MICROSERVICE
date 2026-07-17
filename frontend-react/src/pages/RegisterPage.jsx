@@ -24,12 +24,12 @@ export default function RegisterPage() {
       await post(ENDPOINTS.register, {
         userName: form.username,
         email: form.email,
-        password: form.password,
+        userPassword: form.password,
       });
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
-    } catch {
-      setError(t('common.error'));
+    } catch (requestError) {
+      setError(requestError?.status === 409 ? t('auth.email_in_use') : t('common.error'));
     } finally {
       setLoading(false);
     }

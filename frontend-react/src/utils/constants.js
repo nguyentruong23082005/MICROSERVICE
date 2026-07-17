@@ -1,5 +1,5 @@
 /** Application name */
-export const APP_NAME = 'Phuc Long Coffee & Tea';
+export const APP_NAME = 'Furniq Furniture';
 
 /** API gateway base */
 export const GATEWAY_BASE_URL = import.meta.env.VITE_GATEWAY_BASE_URL || 'http://localhost:8900';
@@ -13,9 +13,8 @@ export const ROLES = {
   USER: 'ROLE_USER',
 };
 
-/** localStorage keys */
+/** localStorage keys for non-sensitive user metadata */
 export const STORAGE_KEYS = {
-  TOKEN: 'rf_token',
   USER_ID: 'rf_userId',
   USER_NAME: 'rf_userName',
   ROLE: 'rf_role',

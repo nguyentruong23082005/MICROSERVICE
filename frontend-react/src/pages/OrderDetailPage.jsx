@@ -55,12 +55,16 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError(null);
 
-    getOrderById(orderId)
-      .then(data => { if (active) { setOrder(data); setLoading(false); } })
-      .catch(err => { if (active) { setError(err.message || t('common.error')); setLoading(false); } });
+    Promise.resolve().then(() => {
+      if (!active) return;
+      setLoading(true);
+      setError(null);
+
+      getOrderById(orderId)
+        .then(data => { if (active) { setOrder(data); setLoading(false); } })
+        .catch(err => { if (active) { setError(err.message || t('common.error')); setLoading(false); } });
+    });
 
     return () => { active = false; };
   }, [orderId, t]);
@@ -116,29 +120,36 @@ export default function OrderDetailPage() {
           {t('order.items')}
         </h2>
         <div style={{ borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-          {items.map((item, i) => (
-            <div key={item.id || i} style={{
-              display: 'flex', alignItems: 'center', gap: '16px',
-              padding: '16px 20px',
-              borderBottom: i < items.length - 1 ? '1px solid var(--color-border)' : 'none',
-            }}>
-              {item.productImage && (
-                <img src={item.productImage} alt={item.productName}
-                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontWeight: 600, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {item.productName || item.name || `Product #${item.productId}`}
-                </p>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                  {t('product.quantity')}: {item.quantity}
+          {items.map((item, i) => {
+            const p = item.product || item || {};
+            const itemName = p.productName || p.name || item.productName || item.name || `Product #${item.productId || p.id}`;
+            const itemImage = p.imageUrl || p.productImageUrl || p.thumbnailUrl || p.productImage || p.image || item.productImage || '';
+            const itemPrice = Number(p.price || p.productPrice || item.price || 0);
+
+            return (
+              <div key={item.id || i} style={{
+                display: 'flex', alignItems: 'center', gap: '16px',
+                padding: '16px 20px',
+                borderBottom: i < items.length - 1 ? '1px solid var(--color-border)' : 'none',
+              }}>
+                {itemImage && (
+                  <img src={itemImage} alt={itemName}
+                    style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 600, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {itemName}
+                  </p>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                    {t('product.quantity')}: {item.quantity}
+                  </p>
+                </div>
+                <p style={{ fontWeight: 700, flexShrink: 0 }}>
+                  {formatVND(itemPrice * item.quantity)}
                 </p>
               </div>
-              <p style={{ fontWeight: 700, flexShrink: 0 }}>
-                {formatVND(item.price * item.quantity)}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../features/auth/hooks/useAuth.js';
 import { useCart } from '../../features/cart/hooks/useCart.js';
 import { useCompare } from '../../features/compare/index.js';
-import LoginForm from '../../features/auth/components/LoginForm.jsx';
-import RegisterForm from '../../features/auth/components/RegisterForm.jsx';
+import { NotificationDropdown } from '../../features/notification/index.js';
 import LanguageSwitcher from '../ui/LanguageSwitcher.jsx';
 import {
   UnorderedListIcon,
@@ -15,13 +15,12 @@ import {
 } from '../icons/index.js';
 
 export default function Header() {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { totalItems } = useCart();
   const { count: compareCount } = useCompare();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const [showLogin, setShowLogin] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
 
   const goMobile = (path) => {
@@ -33,7 +32,7 @@ export default function Header() {
     <>
       <header className="header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <button className="desktop-only btn btn-ghost" style={{ display: 'none', padding: '8px' }} onClick={() => setMobileMenu(!mobileMenu)} aria-label="Mở menu điều hướng">
+          <button className="desktop-only btn btn-ghost" style={{ display: 'none', padding: '8px' }} onClick={() => setMobileMenu(!mobileMenu)} aria-label={t('nav.open_menu')}>
             <UnorderedListIcon size={24} />
           </button>
 
@@ -44,18 +43,21 @@ export default function Header() {
           </div>
         </div>
 
-        <nav className="nav-links desktop-only" style={{ display: 'flex', gap: '32px' }} aria-label="Điều hướng chính">
+        <nav className="nav-links desktop-only" style={{ display: 'flex', gap: '32px', alignItems: 'center' }} aria-label={t('nav.primary_navigation')}>
           <NavLink to="/" className={({ isActive }) => `nav-link ${isActive && location.pathname === '/' ? 'muted' : ''}`} style={{ fontWeight: 500 }}>
-            Trang chủ
+            {t('nav.home')}
           </NavLink>
           <NavLink to="/catalog" className="nav-link" style={{ fontWeight: 500 }}>
-            Sản phẩm
+            {t('nav.products')}
           </NavLink>
           <NavLink to="/collections" className="nav-link" style={{ fontWeight: 500 }}>
-            Bộ sưu tập
+            {t('nav.collections')}
           </NavLink>
           <NavLink to="/about" className="nav-link" style={{ fontWeight: 500 }}>
-            Giới thiệu
+            {t('nav.about')}
+          </NavLink>
+          <NavLink to="/contact" className="nav-link" style={{ fontWeight: 500 }}>
+            {t('nav.contact')}
           </NavLink>
         </nav>
 
@@ -63,7 +65,7 @@ export default function Header() {
           <button
             className="btn btn-ghost"
             style={{ padding: '8px', borderRadius: '50%' }}
-            aria-label="Tìm kiếm"
+            aria-label={t('nav.search')}
             onClick={() => navigate('/search')}
           >
             <MagnifierIcon size={20} strokeWidth={2} />
@@ -73,7 +75,7 @@ export default function Header() {
             className="btn btn-ghost"
             style={{ padding: '8px', borderRadius: '50%', position: 'relative' }}
             onClick={() => navigate('/compare')}
-            aria-label={`So sánh sản phẩm (${compareCount})`}
+            aria-label={t('nav.compare_count', { count: compareCount })}
           >
             <RefreshIcon size={20} strokeWidth={2} />
             {compareCount > 0 && (
@@ -86,7 +88,7 @@ export default function Header() {
             className="btn btn-ghost"
             style={{ padding: '8px', borderRadius: '50%', position: 'relative' }}
             onClick={() => navigate('/cart')}
-            aria-label={`Giỏ hàng (${totalItems})`}
+            aria-label={t('nav.cart_count', { count: totalItems })}
           >
             <ShoppingCartIcon size={20} strokeWidth={2} />
             {totalItems > 0 && (
@@ -94,19 +96,22 @@ export default function Header() {
             )}
           </button>
 
+          {user && <NotificationDropdown userId={user.userId} />}
+
           {user ? (
-            <button className="btn btn-ghost" style={{ padding: '8px', borderRadius: '50%' }} onClick={() => navigate('/profile')} aria-label="Tài khoản">
+            <button className="btn btn-ghost" style={{ padding: '8px', borderRadius: '50%' }} onClick={() => navigate('/profile')} aria-label={t('nav.account')}>
               <UserIcon size={20} strokeWidth={2} />
             </button>
           ) : (
-            <button id="login-btn" className="btn btn-primary btn-sm"
-              onClick={() => setShowLogin(true)} style={{ marginLeft: '12px' }}>
-              Tài khoản
-            </button>
-          )}
-          {isAdmin && (
-            <button className="btn btn-outline btn-sm desktop-only" onClick={() => navigate('/admin')}>
-              Quản trị
+            <button
+              id="login-btn"
+              className="btn btn-primary btn-sm"
+              aria-haspopup="dialog"
+              aria-expanded={location.pathname === '/login' || location.pathname === '/register'}
+              onClick={() => navigate('/login', { state: { backgroundLocation: location } })}
+              style={{ marginLeft: '12px' }}
+            >
+              {t('nav.account')}
             </button>
           )}
           <LanguageSwitcher />
@@ -115,26 +120,14 @@ export default function Header() {
 
       {mobileMenu && (
         <div style={{ position: 'fixed', top: '80px', left: 0, right: 0, bottom: 0, background: 'var(--color-bg)', zIndex: 90, padding: '24px' }}>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontSize: '1.25rem' }} aria-label="Điều hướng di động">
-            <span onClick={() => goMobile('/')}>Trang chủ</span>
-            <span onClick={() => goMobile('/catalog')}>Sản phẩm</span>
-            <span onClick={() => goMobile('/collections')}>Bộ sưu tập</span>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontSize: '1.25rem' }} aria-label={t('nav.mobile_navigation')}>
+            <span onClick={() => goMobile('/')}>{t('nav.home')}</span>
+            <span onClick={() => goMobile('/catalog')}>{t('nav.products')}</span>
+            <span onClick={() => goMobile('/collections')}>{t('nav.collections')}</span>
           </nav>
         </div>
       )}
 
-      {showLogin && (
-        <LoginForm
-          onClose={() => setShowLogin(false)}
-          onSwitch={() => { setShowLogin(false); setShowRegister(true); }}
-        />
-      )}
-      {showRegister && (
-        <RegisterForm
-          onClose={() => setShowRegister(false)}
-          onSwitch={() => { setShowRegister(false); setShowLogin(true); }}
-        />
-      )}
     </>
   );
 }

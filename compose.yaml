@@ -113,6 +113,11 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       SECURITY_JWT_SECRET: ${SECURITY_JWT_SECRET:?SECURITY_JWT_SECRET must be set to a random value of at least 32 bytes}
       SECURITY_JWT_EXPIRATION_MS: ${SECURITY_JWT_EXPIRATION_MS:-86400000}
+      SECURITY_AUTH_COOKIE_SECURE: ${SECURITY_AUTH_COOKIE_SECURE:-false}
+      FIREBASE_CONFIG_PATH: /run/secrets/firebase-service-account.json
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
+    volumes:
+      - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -196,8 +201,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_CONTAINER_PORT:-5432}/${PRODUCT_RECOMMENDATION_DB:-product_recommendations}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       eureka-server:
         condition: service_started
@@ -267,6 +277,11 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       KAFKA_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_SERVERS:-kafka:29092}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_STORE_NAME: ${MAIL_STORE_NAME:-RainbowForest}
     depends_on:
       mongo:
         condition: service_healthy

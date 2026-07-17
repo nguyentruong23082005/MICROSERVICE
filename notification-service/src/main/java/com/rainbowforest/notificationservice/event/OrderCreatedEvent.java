@@ -15,6 +15,8 @@ public class OrderCreatedEvent {
     private String status;
     private LocalDate orderedDate;
     private List<OrderItemEvent> items;
+    private String customerEmail;
+    private String customerName;
 
     public OrderCreatedEvent() {
     }
@@ -36,4 +38,10 @@ public class OrderCreatedEvent {
 
     public List<OrderItemEvent> getItems() { return items; }
     public void setItems(List<OrderItemEvent> items) { this.items = items; }
+
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
+
+    public String getCustomerName() { return customerName; }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
 }

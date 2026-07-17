@@ -38,7 +38,9 @@ public class OrderEventPublisher {
                 order.getTotal(),
                 order.getStatus(),
                 order.getOrderedDate(),
-                items
+                items,
+                order.getShippingEmail(),
+                order.getShippingName()
         );
         event.setForceFailure(forceFailure);
         return event;

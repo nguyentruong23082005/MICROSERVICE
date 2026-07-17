@@ -7,4 +7,6 @@ import com.rainbowforest.userservice.entity.UserDetails;
 
 @Repository
 public interface UserDetailsRepository extends JpaRepository<UserDetails, Long> {
+
+    boolean existsByEmailIgnoreCase(String email);
 }

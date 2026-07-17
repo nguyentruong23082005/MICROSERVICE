@@ -79,13 +79,64 @@ public class ProductServiceTests {
 
     @Test
     public void get_all_products_by_name_test() {
-        Mockito.when(productRepository.findAllByProductNameOrderByIdAsc(PRODUCT_NAME)).thenReturn(products);
+        Mockito.when(productRepository.findAllByProductNameContainingIgnoreCaseOrderByIdAsc(PRODUCT_NAME)).thenReturn(products);
 
         List<Product> foundProducts = productService.getAllProductsByName(PRODUCT_NAME);
 
         assertEquals(PRODUCT_NAME, foundProducts.get(0).getProductName());
-        Mockito.verify(productRepository, Mockito.times(1)).findAllByProductNameOrderByIdAsc(Mockito.anyString());
+        Mockito.verify(productRepository, Mockito.times(1)).findAllByProductNameContainingIgnoreCaseOrderByIdAsc(Mockito.anyString());
         Mockito.verifyNoMoreInteractions(productRepository);
     }
 
+    @Test
+    public void update_product_should_set_id_and_save() {
+        Product update = new Product();
+        update.setProductName(PRODUCT_NAME);
+        update.setCategory(PRODUCT_CATEGORY);
+
+        Mockito.when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        Mockito.when(productRepository.save(Mockito.any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Product saved = productService.updateProduct(PRODUCT_ID, update);
+
+        assertNotNull(saved);
+        assertEquals(PRODUCT_ID, saved.getId());
+        assertEquals(PRODUCT_NAME, saved.getProductName());
+        Mockito.verify(productRepository, Mockito.times(1)).findById(PRODUCT_ID);
+        Mockito.verify(productRepository, Mockito.times(1)).save(update);
+        Mockito.verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    public void update_product_should_return_null_when_product_is_missing() {
+        Mockito.when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
+
+        Product saved = productService.updateProduct(PRODUCT_ID, product);
+
+        assertNull(saved);
+        Mockito.verify(productRepository, Mockito.times(1)).findById(PRODUCT_ID);
+        Mockito.verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    public void delete_product_should_delete_loaded_aggregate_and_flush_when_product_exists() {
+        Mockito.when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+
+        assertTrue(productService.deleteProduct(PRODUCT_ID));
+
+        Mockito.verify(productRepository, Mockito.times(1)).findById(PRODUCT_ID);
+        Mockito.verify(productRepository, Mockito.times(1)).delete(product);
+        Mockito.verify(productRepository, Mockito.times(1)).flush();
+        Mockito.verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    public void delete_product_should_return_false_when_product_is_missing() {
+        Mockito.when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
+
+        assertFalse(productService.deleteProduct(PRODUCT_ID));
+
+        Mockito.verify(productRepository, Mockito.times(1)).findById(PRODUCT_ID);
+        Mockito.verifyNoMoreInteractions(productRepository);
+    }
 }

@@ -1,5 +1,7 @@
 package com.rainbowforest.userservice.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class LoginResponse {
 
     private final String token;
@@ -16,10 +18,12 @@ public class LoginResponse {
         this.role = role;
     }
 
+    @JsonIgnore
     public String getToken() {
         return token;
     }
 
+    @JsonIgnore
     public String getRefreshToken() {
         return refreshToken;
     }

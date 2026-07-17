@@ -15,10 +15,26 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtils {
 
+    private static final int MINIMUM_SECRET_BYTES = 32;
+    private static final String EXPOSED_PLACEHOLDER =
+            "rainbowforest-local-development-secret-key-must-be-at-least-256-bits";
+
     private final SecretKey signingKey;
 
-    public JwtUtils(@Value("${security.jwt.secret:rainbowforest-local-development-secret-key-must-be-at-least-256-bits}") String secret) {
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    public JwtUtils(@Value("${security.jwt.secret}") String secret) {
+        this.signingKey = Keys.hmacShaKeyFor(validateSecret(secret));
+    }
+
+    private static byte[] validateSecret(String secret) {
+        if (secret == null || secret.isBlank() || EXPOSED_PLACEHOLDER.equals(secret)) {
+            throw new IllegalArgumentException("JWT secret must be configured with a non-placeholder value");
+        }
+
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < MINIMUM_SECRET_BYTES) {
+            throw new IllegalArgumentException("JWT secret must contain at least 32 UTF-8 bytes");
+        }
+        return secretBytes;
     }
 
     public boolean validateToken(String token) {

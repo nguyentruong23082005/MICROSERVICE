@@ -23,6 +23,7 @@ public class Notification {
 
     private String message;
     private String status;
+    private boolean read;
     private LocalDateTime createdAt;
 
     /** Dữ liệu linh hoạt tuỳ loại notification */
@@ -44,6 +45,8 @@ public class Notification {
     public void setMessage(String message) { this.message = message; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public boolean isRead() { return read; }
+    public void setRead(boolean read) { this.read = read; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Map<String, Object> getMetadata() { return metadata; }

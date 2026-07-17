@@ -38,6 +38,10 @@ public class Item {
     @Column(name = "product_category", length = 100)
     private String productCategory;
 
+    @Column(name = "product_image_url", length = 500)
+    private String productImageUrl;
+
+
     // Thông tin Product đầy đủ nhúng trong response (không lưu DB, không dùng cho equals)
     // Được tạo lại khi cần hiển thị dựa trên productId/productName/productPrice/productCategory
     @Transient
@@ -60,8 +64,10 @@ public class Item {
             this.productName = product.getProductName();
             this.productPrice = product.getPrice();
             this.productCategory = product.getCategory();
+            this.productImageUrl = product.getImageUrl();
         }
     }
+
 
     public Long getId() {
         return id;
@@ -130,8 +136,10 @@ public class Item {
             this.productName = product.getProductName();
             this.productPrice = product.getPrice();
             this.productCategory = product.getCategory();
+            this.productImageUrl = product.getImageUrl();
         }
     }
+
 
     public List<Order> getOrders() {
         return orders;
@@ -152,8 +160,18 @@ public class Item {
         p.setProductName(productName);
         p.setPrice(productPrice);
         p.setCategory(productCategory);
+        p.setImageUrl(productImageUrl);
         return p;
     }
+
+    public String getProductImageUrl() {
+        return productImageUrl;
+    }
+
+    public void setProductImageUrl(String productImageUrl) {
+        this.productImageUrl = productImageUrl;
+    }
+
 
     @Override
     public boolean equals(Object o) {

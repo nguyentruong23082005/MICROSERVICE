@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.rainbowforest.orderservice.feignclient.ProductClient;
+import com.rainbowforest.orderservice.domain.Product;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,19 +35,22 @@ public class OrderServiceImpl implements OrderService {
     private final UserClient userClient;
     private final UserRepository userRepository;
     private final OrderEventPublisher orderEventPublisher;
+    private final ProductClient productClient;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             CartService cartService,
                             CouponService couponService,
                             UserClient userClient,
                             UserRepository userRepository,
-                            OrderEventPublisher orderEventPublisher) {
+                            OrderEventPublisher orderEventPublisher,
+                            ProductClient productClient) {
         this.orderRepository = orderRepository;
         this.cartService = cartService;
         this.couponService = couponService;
         this.userClient = userClient;
         this.userRepository = userRepository;
         this.orderEventPublisher = orderEventPublisher;
+        this.productClient = productClient;
     }
 
     @Override
@@ -71,6 +76,17 @@ public class OrderServiceImpl implements OrderService {
             throw new NoSuchElementException("Cart is empty");
         }
 
+        // Kiểm tra tồn kho trước khi tạo đơn hàng
+        for (Item item : cart) {
+            Product product = productClient.getProductById(item.getProductId());
+            if (product != null) {
+                if (item.getQuantity() > product.getAvailability()) {
+                    throw new IllegalArgumentException(
+                            "Sản phẩm \"" + product.getProductName() + "\" chỉ còn " + product.getAvailability() + " sản phẩm trong kho.");
+                }
+            }
+        }
+
         User user = userClient.getUserById(userId);
         if (user == null || user.getId() == null) {
             throw new NoSuchElementException("User not found");
@@ -89,8 +105,9 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.findById(orderId).ifPresentOrElse(
                 order -> {
                     order.setStatus(status);
-                    orderRepository.save(order);
+                    Order saved = orderRepository.save(order);
                     log.info("[SAGA] Order #{} status → {}", orderId, status);
+                    orderEventPublisher.publishOrderCreated(saved, false);
                 },
                 () -> log.warn("[SAGA] Order #{} not found when updating status to {}", orderId, status)
         );
@@ -124,6 +141,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus("CANCELLED");
         Order saved = orderRepository.save(order);
         log.info("[ORDER] Order #{} cancelled", orderId);
+        orderEventPublisher.publishOrderCreated(saved, false);
         return saved;
     }
 
@@ -138,12 +156,14 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal subtotal = OrderUtilities.countTotalPrice(cart);
         Coupon coupon = couponService.getValidCoupon(shippingInfo == null ? null : shippingInfo.getCouponCode(), subtotal);
         BigDecimal discountTotal = couponService.calculateDiscount(coupon, subtotal);
+        BigDecimal shippingFee = nonNegative(shippingInfo == null ? null : shippingInfo.getShippingFee());
         order.setItems(cart);
         order.setUser(user);
         order.setSubtotal(subtotal);
         order.setDiscountTotal(discountTotal);
+        order.setShippingFee(shippingFee);
         order.setCouponCode(coupon == null ? null : coupon.getCode());
-        order.setTotal(subtotal.subtract(discountTotal));
+        order.setTotal(subtotal.subtract(discountTotal).add(shippingFee));
         order.setTrackingNumber("ORD-" + LocalDate.now().toString().replace("-", "") + "-" + Long.toHexString(System.nanoTime()).toUpperCase());
         order.setOrderedDate(LocalDate.now());
         order.setStatus("PAYMENT_EXPECTED");
@@ -159,6 +179,13 @@ public class OrderServiceImpl implements OrderService {
     private String firstPresent(String preferred, String fallback) {
         String normalized = normalize(preferred);
         return normalized != null ? normalized : normalize(fallback);
+    }
+
+    private BigDecimal nonNegative(BigDecimal value) {
+        if (value == null || value.signum() < 0) {
+            return BigDecimal.ZERO;
+        }
+        return value;
     }
 
     private String normalize(String value) {

@@ -1,10 +1,12 @@
 package com.rainbowforest.recommendationservice.model;
 
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import java.time.Instant;
 
 @Entity
 @Table (name = "recommendation")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Recommendation {
 
     @Id
@@ -13,14 +15,37 @@ public class Recommendation {
     @Column (name = "rating")
     private int rating;
 
-    @ManyToOne (cascade = CascadeType.ALL)
-    @JoinColumn (name = "product_id")
+    @Column(name = "title", length = 160)
+    private String title;
 
+    @Column(name = "comment", length = 2000)
+    private String comment;
+
+    @Column(name = "status", length = 30)
+    private String status = "APPROVED";
+
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    @ManyToOne
+    @JoinColumn (name = "product_id")
+    @JsonIgnoreProperties({"recomendations", "wishlistItems", "hibernateLazyInitializer", "handler"})
     private Product product;
 
-    @ManyToOne (cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn (name = "user_id")
+    @JsonIgnoreProperties({"recomendations", "wishlistItems", "hibernateLazyInitializer", "handler"})
     private User user;
+
+    @PrePersist
+    void prePersist() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+        if (status == null || status.isBlank()) {
+            status = "APPROVED";
+        }
+    }
     
     public Recommendation() {
 	
@@ -46,6 +71,38 @@ public class Recommendation {
 
     public void setRating(int rating) {
         this.rating = rating;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Product getProduct() {

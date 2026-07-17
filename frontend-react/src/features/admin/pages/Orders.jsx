@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { adminGetOrders, adminUpdateOrderStatus } from '../services/adminService.js';
 import { money } from '../../../utils/formatters.js';
 import { translateStatus, translatePayment } from '../../../utils/uiText.js';
@@ -14,9 +15,22 @@ import {
 } from '../../orders/utils/orderViewModel.js';
 
 import Pagination from '../components/Pagination.jsx';
+import AdminModal from '../components/AdminModal.jsx';
 import { ADMIN_PAGE_SIZE } from '../../../utils/constants.js';
+import { MagnifierIcon } from '../../../components/icons/index.js';
+
+function orderItemImage(item) {
+  const p = item?.product || item || {};
+  return p.imageUrl || p.productImageUrl || p.thumbnailUrl || p.productImage || p.image || item?.productImageUrl || item?.imageUrl || '';
+}
+
+function orderItemName(item, index) {
+  const p = item?.product || item || {};
+  return p.productName || p.name || item?.productName || item?.name || `Sản phẩm #${item?.productId || p.productId || index + 1}`;
+}
 
 export default function Orders() {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +41,7 @@ export default function Orders() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -36,8 +51,12 @@ export default function Orders() {
   }, [search]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, filterStatus]);
+    if (currentPage !== 1) {
+      Promise.resolve().then(() => {
+        setCurrentPage(1);
+      });
+    }
+  }, [debouncedSearch, filterStatus, currentPage]);
 
   const loadCounts = () => {
     adminGetOrders()
@@ -88,7 +107,11 @@ export default function Orders() {
   useEffect(() => {
     let active = true;
     if (active) {
-      load(currentPage, debouncedSearch, filterStatus);
+      Promise.resolve().then(() => {
+        if (active) {
+          load(currentPage, debouncedSearch, filterStatus);
+        }
+      });
     }
     return () => { active = false; };
   }, [currentPage, debouncedSearch, filterStatus]);
@@ -101,16 +124,16 @@ export default function Orders() {
       load(currentPage, debouncedSearch, filterStatus);
       loadCounts();
     } catch (err) {
-      alert("Không thể cập nhật trạng thái đơn hàng: " + err.message);
+      alert(t('admin.order_management.update_error', { message: err.message }));
     }
   };
 
   return (
-    <div>
+    <div className="admin-page-shell">
       <div className="admin-page-head">
         <div>
-          <h1 className="admin-page-title">Đơn hàng</h1>
-          <p className="admin-subtitle">Theo dõi và xử lý đơn đặt hàng của khách hàng.</p>
+          <h1 className="admin-page-title">{t('admin.order_management.title')}</h1>
+          <p className="admin-subtitle">{t('admin.order_management.description')}</p>
         </div>
       </div>
 
@@ -118,34 +141,129 @@ export default function Orders() {
 
       <div className="admin-stats">
         <div className="metric-card">
-          <span className="metric-label">Đang chờ</span>
+          <span className="metric-label">{t('admin.order_management.pending')}</span>
           <span className="metric-value">{counts.PAYMENT_EXPECTED || counts.Pending || 0}</span>
         </div>
         <div className="metric-card highlight-alt">
-          <span className="metric-label">Đang xử lý</span>
+          <span className="metric-label">{t('admin.order_management.processing')}</span>
           <span className="metric-value">{counts.PAID || counts.Processing || 0}</span>
         </div>
         <div className="metric-card highlight">
-          <span className="metric-label">Đang giao</span>
+          <span className="metric-label">{t('admin.order_management.shipping')}</span>
           <span className="metric-value">{counts.SHIPPING || counts.Shipping || 0}</span>
         </div>
-        <div className="metric-card" style={{ background: 'var(--admin-black)', color: 'white', borderColor: 'var(--admin-black)' }}>
-          <span className="metric-label" style={{ color: 'rgba(255,255,255,0.7)' }}>Hoàn tất</span>
-          <span className="metric-value" style={{ color: 'white' }}>{counts.DELIVERED || counts.Completed || 0}</span>
+        <div className="metric-card metric-card--complete">
+          <span className="metric-label">{t('admin.order_management.completed')}</span>
+          <span className="metric-value">{counts.DELIVERED || counts.Completed || 0}</span>
         </div>
       </div>
 
+      <AdminModal
+        isOpen={Boolean(selectedOrder)}
+        title={selectedOrder ? `Đơn hàng #${orderDisplayId(selectedOrder)}` : 'Chi tiết đơn hàng'}
+        subtitle="Kiểm tra khách hàng, thanh toán, vận chuyển và sản phẩm trong đơn."
+        size="lg"
+        onClose={() => setSelectedOrder(null)}
+        footer={<button type="button" className="admin-btn admin-btn-outline" onClick={() => setSelectedOrder(null)}>Đóng</button>}
+      >
+        {selectedOrder && (
+          <div className="admin-order-detail">
+            <section className="admin-order-detail-hero">
+              <div>
+                <span className="admin-detail-label">Mã đơn hàng</span>
+                <strong>#{orderDisplayId(selectedOrder)}</strong>
+                <p>{orderItemsCount(selectedOrder)} sản phẩm nội thất · {orderDateLabel(selectedOrder)}</p>
+              </div>
+              <span className={`admin-badge ${orderStatus(selectedOrder).toLowerCase()}`}>
+                {translateStatus(orderStatus(selectedOrder))}
+              </span>
+            </section>
+
+            <div className="admin-detail-grid admin-detail-grid--order">
+              <article className="admin-detail-panel">
+                <h3>Khách hàng</h3>
+                <dl className="admin-detail-listing">
+                  <div>
+                    <dt>Họ tên</dt>
+                    <dd>{orderCustomerName(selectedOrder)}</dd>
+                  </div>
+                  <div>
+                    <dt>Email</dt>
+                    <dd>{orderCustomerEmail(selectedOrder)}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article className="admin-detail-panel">
+                <h3>Thanh toán</h3>
+                <dl className="admin-detail-listing">
+                  <div>
+                    <dt>Phương thức</dt>
+                    <dd>{translatePayment(orderPaymentMethod(selectedOrder)) || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>Tổng tiền</dt>
+                    <dd className="admin-detail-money">{money(orderTotal(selectedOrder))}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article className="admin-detail-panel admin-form-span-2">
+                <h3>Giao hàng</h3>
+                <p className="admin-detail-address">
+                  {[selectedOrder.shippingAddress, selectedOrder.shippingCity, selectedOrder.shippingProvince].filter(Boolean).join(', ') || 'Chưa có địa chỉ giao hàng.'}
+                </p>
+              </article>
+
+              <article className="admin-detail-panel admin-form-span-2">
+                <div className="admin-detail-panel-head">
+                  <h3>Sản phẩm trong đơn</h3>
+                  <span>{orderItemsCount(selectedOrder)} dòng hàng</span>
+                </div>
+                {Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
+                  <div className="admin-detail-items">
+                    {selectedOrder.items.map((item, index) => {
+                      const itemName = orderItemName(item, index);
+                      const itemImage = orderItemImage(item);
+
+                      return (
+                        <div key={item.id || item.productId || index} className="admin-detail-item-row">
+                          <div className="admin-detail-item-thumb" aria-hidden="true">
+                            {itemImage ? (
+                              <img src={itemImage} alt="" loading="lazy" />
+                            ) : (
+                              <i className="bi bi-box-seam" />
+                            )}
+                          </div>
+                          <div>
+                            <strong>{itemName}</strong>
+                            <span>SL: {item.quantity || 1}</span>
+                          </div>
+                          <p>{money(Number(item.product?.price || item.product?.productPrice || item.price || item.unitPrice || 0))}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="admin-detail-address">{t('admin.order_management.items', { count: orderItemsCount(selectedOrder) })}</p>
+                )}
+              </article>
+            </div>
+          </div>
+        )}
+      </AdminModal>
+
       <div className="admin-filter-bar">
         <div className="admin-search-box">
-          <svg className="admin-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" className="admin-search-input" placeholder="Tìm đơn hàng hoặc khách hàng..." value={search} onChange={e => setSearch(e.target.value)} />
+          <MagnifierIcon className="admin-search-icon" size={16} strokeWidth={2} />
+          <input id="admin-orders-search" name="orderSearch" type="text" className="admin-search-input" placeholder={t('admin.order_management.search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="admin-filter-select" aria-label="Lọc theo trạng thái" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="PAYMENT_EXPECTED">Đang chờ thanh toán</option>
-          <option value="PAID">Đã thanh toán</option>
-          <option value="DELIVERED">Đã giao hàng</option>
-          <option value="CANCELLED">Đã huỷ</option>
+        <select id="admin-orders-status-filter" name="orderStatusFilter" className="admin-filter-select" aria-label={t('admin.order_management.filter_label')} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <option value="">{t('admin.order_management.all_statuses')}</option>
+          <option value="PAYMENT_EXPECTED">{t('admin.order_management.payment_expected')}</option>
+          <option value="PAID">{t('admin.order_management.paid')}</option>
+          <option value="DELIVERED">{t('admin.order_management.delivered')}</option>
+          <option value="CANCELLED">{t('admin.order_management.cancelled')}</option>
         </select>
       </div>
 
@@ -153,14 +271,14 @@ export default function Orders() {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Mã đơn</th>
-              <th>Khách hàng</th>
-              <th>Sản phẩm</th>
-              <th>Thanh toán</th>
-              <th>Trạng thái</th>
-              <th>Tổng tiền</th>
-              <th>Ngày đặt</th>
-              <th style={{ textAlign: 'right' }}>Thao tác</th>
+              <th>{t('admin.order_management.order_id')}</th>
+              <th>{t('admin.order_management.customer')}</th>
+              <th>{t('admin.order_management.products')}</th>
+              <th>{t('admin.order_management.payment')}</th>
+              <th>{t('admin.order_management.status')}</th>
+              <th>{t('admin.order_management.total')}</th>
+              <th>{t('admin.order_management.order_date')}</th>
+              <th className="admin-table-actions-head">{t('admin.order_management.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -176,39 +294,41 @@ export default function Orders() {
 
               return (
                 <tr key={id}>
-                  <td style={{ fontWeight: 500 }}>{id}</td>
+                  <td className="admin-table-number">{id}</td>
                   <td>
-                    <div style={{ fontWeight: 500, color: 'var(--admin-black)' }}>{customer}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--admin-muted)' }}>{email}</div>
+                    <div className="admin-table-primary">{customer}</div>
+                    <div className="admin-table-secondary">{email}</div>
                   </td>
-                  <td>{itemsCount} món</td>
+                  <td>{t('admin.order_management.items', { count: itemsCount })}</td>
                   <td>{translatePayment(payment)}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td className="admin-table-nowrap">
                     <span className={`admin-badge ${status.toLowerCase()}`}>
                       {translateStatus(status)}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 500 }}>{money(total)}</td>
-                  <td style={{ color: 'var(--admin-muted)' }}>{date}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <td className="admin-table-number">{money(total)}</td>
+                  <td className="admin-table-muted">{date}</td>
+                  <td className="admin-table-actions-cell">
+                    <div className="admin-action-group">
+                      <button className="admin-btn admin-btn-outline admin-btn--small" onClick={() => setSelectedOrder(o)}>Chi tiết</button>
                       {status.toUpperCase() === 'PAYMENT_EXPECTED' && (
-                        <button className="admin-btn admin-btn-outline" style={{ padding: '4px 8px', fontSize: '11px', margin: 0 }} onClick={() => handleUpdateStatus(id, 'PAID')}>Xác nhận TT</button>
+                        <button className="admin-btn admin-btn-outline admin-btn--small" onClick={() => handleUpdateStatus(id, 'PAID')}>{t('admin.order_management.confirm_payment')}</button>
                       )}
                       {status.toUpperCase() === 'PAID' && (
-                        <button className="admin-btn admin-btn-outline" style={{ padding: '4px 8px', fontSize: '11px', margin: 0 }} onClick={() => handleUpdateStatus(id, 'DELIVERED')}>Giao hàng</button>
+                        <button className="admin-btn admin-btn-outline admin-btn--small" onClick={() => handleUpdateStatus(id, 'DELIVERED')}>{t('admin.order_management.ship_order')}</button>
                       )}
                       <select
+                        id={`admin-order-status-${id}`}
+                        name={`orderStatus-${id}`}
                         value={status}
                         onChange={(e) => handleUpdateStatus(id, e.target.value)}
-                        className="admin-filter-select"
-                        style={{ padding: '4px 8px', fontSize: '11px', height: '28px', width: 'auto', margin: 0, minWidth: '120px' }}
-                        aria-label="Cập nhật trạng thái"
+                        className="admin-filter-select admin-compact-select"
+                        aria-label={t('admin.order_management.update_status')}
                       >
-                        <option value="PAYMENT_EXPECTED">Chờ thanh toán</option>
-                        <option value="PAID">Đã thanh toán</option>
-                        <option value="DELIVERED">Đã giao hàng</option>
-                        <option value="CANCELLED">Huỷ đơn</option>
+                        <option value="PAYMENT_EXPECTED">{t('admin.order_management.payment_expected')}</option>
+                        <option value="PAID">{t('admin.order_management.paid')}</option>
+                        <option value="DELIVERED">{t('admin.order_management.delivered')}</option>
+                        <option value="CANCELLED">{t('admin.order_management.cancel_order')}</option>
                       </select>
                     </div>
                   </td>
@@ -223,9 +343,9 @@ export default function Orders() {
           onPageChange={setCurrentPage}
         />
         {orders.length === 0 && !loading && (
-          <div className="admin-empty" style={{ borderTop: '1px solid var(--admin-border)' }}>
-            <h3>Không tìm thấy đơn hàng</h3>
-            <p>Đơn hàng đặt từ khách sẽ hiển thị tại đây.</p>
+          <div className="admin-empty">
+            <h3>{t('admin.order_management.empty_title')}</h3>
+            <p>{t('admin.order_management.empty_description')}</p>
           </div>
         )}
       </div>

@@ -18,17 +18,36 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class JwtTokenService {
 
+    private static final int MINIMUM_SECRET_BYTES = 32;
+    private static final String REFRESH_BY_USER_PREFIX = "refresh:";
+    private static final String USER_BY_REFRESH_PREFIX = "refresh-user:";
+    private static final long REFRESH_TTL_DAYS = 7;
+    private static final String EXPOSED_PLACEHOLDER =
+            "rainbowforest-local-development-secret-key-must-be-at-least-256-bits";
+
     private final SecretKey signingKey;
     private final long expirationMillis;
     private final StringRedisTemplate redisTemplate;
 
     public JwtTokenService(
-            @Value("${security.jwt.secret:rainbowforest-local-development-secret-key-must-be-at-least-256-bits}") String secret,
+            @Value("${security.jwt.secret}") String secret,
             @Value("${security.jwt.expiration-ms:86400000}") long expirationMillis,
             StringRedisTemplate redisTemplate) {
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.signingKey = Keys.hmacShaKeyFor(validateSecret(secret));
         this.expirationMillis = expirationMillis;
         this.redisTemplate = redisTemplate;
+    }
+
+    private static byte[] validateSecret(String secret) {
+        if (secret == null || secret.isBlank() || EXPOSED_PLACEHOLDER.equals(secret)) {
+            throw new IllegalArgumentException("JWT secret must be configured with a non-placeholder value");
+        }
+
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < MINIMUM_SECRET_BYTES) {
+            throw new IllegalArgumentException("JWT secret must contain at least 32 UTF-8 bytes");
+        }
+        return secretBytes;
     }
 
     public String generateToken(User user) {
@@ -47,18 +66,60 @@ public class JwtTokenService {
     }
 
     public String generateRefreshToken(Long userId) {
-        String uuid = UUID.randomUUID().toString();
-        redisTemplate.opsForValue().set("refresh:" + userId, uuid, 7, TimeUnit.DAYS);
-        return uuid;
+        String previousToken = redisTemplate.opsForValue().get(REFRESH_BY_USER_PREFIX + userId);
+        if (previousToken != null) {
+            redisTemplate.delete(USER_BY_REFRESH_PREFIX + previousToken);
+        }
+
+        String token = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(
+                REFRESH_BY_USER_PREFIX + userId, token, REFRESH_TTL_DAYS, TimeUnit.DAYS);
+        redisTemplate.opsForValue().set(
+                USER_BY_REFRESH_PREFIX + token, String.valueOf(userId), REFRESH_TTL_DAYS, TimeUnit.DAYS);
+        return token;
+    }
+
+    public Long getUserIdForRefreshToken(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        String userId = redisTemplate.opsForValue().get(USER_BY_REFRESH_PREFIX + token);
+        if (userId == null) {
+            return null;
+        }
+        try {
+            Long parsedUserId = Long.valueOf(userId);
+            return validateRefreshToken(parsedUserId, token) ? parsedUserId : null;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     public boolean validateRefreshToken(Long userId, String token) {
-        String storedToken = redisTemplate.opsForValue().get("refresh:" + userId);
+        String storedToken = redisTemplate.opsForValue().get(REFRESH_BY_USER_PREFIX + userId);
         return token != null && token.equals(storedToken);
     }
 
-    public void deleteRefreshToken(Long userId) {
-        redisTemplate.delete("refresh:" + userId);
+    public void deleteRefreshToken(String token) {
+        Long userId = getUserIdForRefreshToken(token);
+        if (userId != null) {
+            redisTemplate.delete(REFRESH_BY_USER_PREFIX + userId);
+        }
+        if (token != null && !token.isBlank()) {
+            redisTemplate.delete(USER_BY_REFRESH_PREFIX + token);
+        }
+    }
+
+    public Claims parseAccessToken(String token) {
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public boolean isAccessTokenBlacklisted(String token) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token));
     }
 
     public void blacklistAccessToken(String token) {

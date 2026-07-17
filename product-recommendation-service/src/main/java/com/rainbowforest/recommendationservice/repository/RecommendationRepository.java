@@ -15,4 +15,12 @@ public interface RecommendationRepository extends JpaRepository<Recommendation, 
 
     @Query("select r FROM Recommendation r WHERE r.product.productName = :productName")
     public List<Recommendation> findAllRatingByProductName(@Param("productName") String productName);
+
+    List<Recommendation> findAllByOrderByCreatedAtDesc();
+
+    List<Recommendation> findAllByStatusOrderByCreatedAtDesc(String status);
+
+    List<Recommendation> findAllByProduct_IdOrderByCreatedAtDesc(Long productId);
+
+    List<Recommendation> findAllByProduct_IdAndStatusOrderByCreatedAtDesc(Long productId, String status);
 }

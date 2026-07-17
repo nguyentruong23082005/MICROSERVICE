@@ -29,7 +29,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/products", "/products/**", "/categories", "/categories/**", "/content-pages", "/content-pages/**", "/uploads", "/uploads/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new GatewayHeaderFilter(), UsernamePasswordAuthenticationFilter.class);
@@ -42,7 +42,8 @@ public class SecurityConfig {
                 throws ServletException, IOException {
             String path = request.getRequestURI();
             if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/actuator")
-                    || (request.getMethod().equalsIgnoreCase("GET") && path.startsWith("/products"))) {
+                    || (request.getMethod().equalsIgnoreCase("GET")
+                    && (path.startsWith("/products") || path.startsWith("/categories") || path.startsWith("/content-pages") || path.startsWith("/uploads")))) {
                 filterChain.doFilter(request, response);
                 return;
             }

@@ -1,6 +1,7 @@
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
+  const { t } = useTranslation();
   if (totalPages <= 1) return null;
 
   const getPageNumbers = () => {
@@ -41,7 +42,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
       >
-        &larr; Trước
+        &larr; {t('common.previous')}
       </button>
 
       <div className="admin-pagination-pages">
@@ -65,7 +66,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
       >
-        Sau &rarr;
+        {t('common.next')} &rarr;
       </button>
     </div>
   );

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -24,12 +25,14 @@ public class ProductController {
             @RequestParam(value = "size", required = false) Integer size,
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "inStock", required = false) Boolean inStock){
+            @RequestParam(value = "inStock", required = false) Boolean inStock,
+            @RequestParam(value = "minPrice", required = false) BigDecimal minPrice,
+            @RequestParam(value = "maxPrice", required = false) BigDecimal maxPrice){
         
         if (page != null && size != null) {
             org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
                     page, size, org.springframework.data.domain.Sort.by("id").ascending());
-            org.springframework.data.domain.Page<Product> productPage = productService.searchProductsAdmin(name, category, inStock, pageable);
+            org.springframework.data.domain.Page<Product> productPage = productService.searchProductsAdmin(name, category, inStock, minPrice, maxPrice, pageable);
             return new ResponseEntity<>(productPage, HttpStatus.OK);
         }
 
@@ -48,6 +51,7 @@ public class ProductController {
     @GetMapping(value = "/products", params = "category")
     public ResponseEntity<List<Product>> getAllProductByCategory(@RequestParam ("category") String category){
         List<Product> products = productService.getAllProductByCategory(category);
+        if(!products.isEmpty()) {
         	return new ResponseEntity<List<Product>>(
         			products,
         			headerGenerator.getHeadersForSuccessGetMethod(),

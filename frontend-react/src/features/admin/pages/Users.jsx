@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../auth/hooks/useAuth.js';
 import { initials } from '../../../utils/formatters.js';
 import Pagination from '../components/Pagination.jsx';
+import AdminModal from '../components/AdminModal.jsx';
 import { ADMIN_PAGE_SIZE } from '../../../utils/constants.js';
 import { MagnifierIcon } from '../../../components/icons/index.js';
 
@@ -70,8 +71,8 @@ export default function Users() {
   const [message, setMessage] = useState(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [detailId, setDetailId] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -181,6 +182,7 @@ export default function Users() {
     try {
       const updated = await adminUpdateUserStatus(userItem.id, nextActive);
       setUsers((current) => current.map((item) => (item.id === userItem.id ? updated : item)));
+      setSelectedUser((current) => (current?.id === userItem.id ? updated : current));
       setMessage({ type: 'success', text: `Đã ${actionLabel} tài khoản "${userItem.userName}".` });
       loadCounts();
     } catch (err) {
@@ -195,6 +197,7 @@ export default function Users() {
     try {
       const updated = await adminUpdateUserRole(userId, newRole);
       setUsers((current) => current.map((item) => (item.id === userId ? updated : item)));
+      setSelectedUser((current) => (current?.id === userId ? updated : current));
       setMessage({ type: 'success', text: `Đã cập nhật vai trò thành công.` });
       loadCounts();
     } catch (err) {
@@ -203,14 +206,14 @@ export default function Users() {
   };
 
   return (
-    <div>
+    <div className="admin-page-shell">
       <div className="admin-page-head">
         <div>
-          <h1 className="admin-page-title">Khách hàng</h1>
+          <h1 className="admin-page-title">Người dùng</h1>
           <p className="admin-subtitle">Quản lý tài khoản, thông tin liên hệ và trạng thái truy cập.</p>
         </div>
-        <button className="admin-btn admin-btn-primary" onClick={() => setShowForm((current) => !current)}>
-          {showForm ? 'Đóng' : 'Tạo tài khoản'}
+        <button className="admin-btn admin-btn-primary" onClick={() => setShowForm(true)}>
+          Tạo tài khoản
         </button>
       </div>
 
@@ -227,7 +230,7 @@ export default function Users() {
           <span className="metric-value">{loading ? '...' : activeCount}</span>
         </div>
         <div className="metric-card">
-          <span className="metric-label">Tổng khách hàng</span>
+          <span className="metric-label">Tổng người dùng</span>
           <span className="metric-value">{loading ? '...' : totalCount}</span>
         </div>
         <div className="metric-card">
@@ -236,48 +239,112 @@ export default function Users() {
         </div>
       </div>
 
-      {showForm && (
-        <div className="admin-card" style={{ marginBottom: '24px' }}>
-          <h2 className="admin-page-title-small" style={{ marginBottom: '20px' }}>Tài khoản mới</h2>
-          <form onSubmit={handleCreate} className="admin-form-grid">
-            <div className="admin-form-group">
-              <label className="admin-label" htmlFor="user-name">Tên đăng nhập</label>
-              <input id="user-name" className="admin-input" name="userName" value={form.userName} onChange={handleChange} required autoComplete="username" />
+      <AdminModal
+        isOpen={showForm}
+        title="Tài khoản mới"
+        subtitle="Tạo tài khoản khách hàng hoặc quản trị viên cơ bản, sau đó có thể đổi vai trò ở trang chi tiết."
+        size="md"
+        onClose={resetForm}
+        footer={(
+          <>
+            <button type="button" className="admin-btn admin-btn-outline" onClick={resetForm}>Hủy</button>
+            <button type="submit" form="admin-user-form" className="admin-btn admin-btn-primary" disabled={saving}>
+              {saving ? 'Đang tạo...' : 'Tạo tài khoản'}
+            </button>
+          </>
+        )}
+      >
+        <form id="admin-user-form" onSubmit={handleCreate} className="admin-form-grid">
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="user-name">Tên đăng nhập</label>
+            <input id="user-name" className="admin-input" name="userName" value={form.userName} onChange={handleChange} required autoComplete="username" />
+          </div>
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="user-password">Mật khẩu</label>
+            <input id="user-password" className="admin-input" type="password" name="userPassword" value={form.userPassword} onChange={handleChange} required minLength={6} autoComplete="new-password" />
+          </div>
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="user-first-name">Tên</label>
+            <input id="user-first-name" className="admin-input" name="firstName" value={form.firstName} onChange={handleChange} required />
+          </div>
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="user-last-name">Họ</label>
+            <input id="user-last-name" className="admin-input" name="lastName" value={form.lastName} onChange={handleChange} required />
+          </div>
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="user-email">Email</label>
+            <input id="user-email" className="admin-input" type="email" name="email" value={form.email} onChange={handleChange} required autoComplete="email" />
+          </div>
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="user-phone">Số điện thoại</label>
+            <input id="user-phone" className="admin-input" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} autoComplete="tel" />
+          </div>
+        </form>
+      </AdminModal>
+
+      <AdminModal
+        isOpen={Boolean(selectedUser)}
+        title={selectedUser ? getDisplayName(selectedUser) : 'Chi tiết người dùng'}
+        subtitle="Xem thông tin liên hệ, trạng thái truy cập và cập nhật vai trò tài khoản."
+        size="md"
+        onClose={() => setSelectedUser(null)}
+        footer={<button type="button" className="admin-btn admin-btn-outline" onClick={() => setSelectedUser(null)}>Đóng</button>}
+      >
+        {selectedUser && (() => {
+          const role = getRoleName(selectedUser);
+          const active = isActiveUser(selectedUser);
+          const isCurrentUser = String(currentUser?.userId) === String(selectedUser.id);
+
+          return (
+            <div className="admin-detail-grid">
+              <div className="admin-detail-item">
+                <span className="admin-detail-label">ID</span>
+                <p className="admin-detail-value">#{selectedUser.id}</p>
+              </div>
+              <div className="admin-detail-item">
+                <span className="admin-detail-label">Tên đăng nhập</span>
+                <p className="admin-detail-value">@{selectedUser.userName}</p>
+              </div>
+              <div className="admin-detail-item">
+                <span className="admin-detail-label">Email</span>
+                <p className="admin-detail-value">{getUserEmail(selectedUser) || '-'}</p>
+              </div>
+              <div className="admin-detail-item">
+                <span className="admin-detail-label">Điện thoại</span>
+                <p className="admin-detail-value">{getUserPhone(selectedUser) || '-'}</p>
+              </div>
+              <div className="admin-detail-item">
+                <span className="admin-detail-label">Trạng thái</span>
+                <p className="admin-detail-value">{active ? 'Hoạt động' : 'Đã khóa'}</p>
+              </div>
+              <div className="admin-detail-item">
+                <span className="admin-detail-label">Vai trò hiện tại</span>
+                <p className="admin-detail-value">{role === 'ROLE_ADMIN' ? 'Quản trị viên' : 'Người dùng'}</p>
+              </div>
+              <div className="admin-detail-item admin-form-span-2">
+                <label className="admin-detail-label" htmlFor="selected-user-role">Thay đổi vai trò</label>
+                <select
+                  id="selected-user-role"
+                  value={role}
+                  onChange={(e) => handleRoleChange(selectedUser.id, e.target.value)}
+                  className="admin-filter-select admin-compact-select"
+                  disabled={isCurrentUser}
+                  aria-label="Thay đổi vai trò"
+                >
+                  <option value="ROLE_USER">Người dùng</option>
+                  <option value="ROLE_ADMIN">Quản trị viên</option>
+                </select>
+                {isCurrentUser && <p className="admin-detail-value">Không thể đổi vai trò tài khoản đang đăng nhập.</p>}
+              </div>
             </div>
-            <div className="admin-form-group">
-              <label className="admin-label" htmlFor="user-password">Mật khẩu</label>
-              <input id="user-password" className="admin-input" type="password" name="userPassword" value={form.userPassword} onChange={handleChange} required minLength={6} autoComplete="new-password" />
-            </div>
-            <div className="admin-form-group">
-              <label className="admin-label" htmlFor="user-first-name">Tên</label>
-              <input id="user-first-name" className="admin-input" name="firstName" value={form.firstName} onChange={handleChange} required />
-            </div>
-            <div className="admin-form-group">
-              <label className="admin-label" htmlFor="user-last-name">Họ</label>
-              <input id="user-last-name" className="admin-input" name="lastName" value={form.lastName} onChange={handleChange} required />
-            </div>
-            <div className="admin-form-group">
-              <label className="admin-label" htmlFor="user-email">Email</label>
-              <input id="user-email" className="admin-input" type="email" name="email" value={form.email} onChange={handleChange} required autoComplete="email" />
-            </div>
-            <div className="admin-form-group">
-              <label className="admin-label" htmlFor="user-phone">Số điện thoại</label>
-              <input id="user-phone" className="admin-input" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} autoComplete="tel" />
-            </div>
-            <div className="admin-form-actions">
-              <button type="button" className="admin-btn admin-btn-outline" onClick={resetForm}>Hủy</button>
-              <button type="submit" className="admin-btn admin-btn-primary" disabled={saving}>
-                {saving ? 'Đang tạo...' : 'Tạo tài khoản'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          );
+        })()}
+      </AdminModal>
 
       <div className="admin-filter-bar">
         <div className="admin-search-box">
           <MagnifierIcon className="admin-search-icon" size={16} strokeWidth={2} />
-          <input type="text" className="admin-search-input" placeholder="Tìm khách hàng..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input type="text" className="admin-search-input" placeholder="Tìm người dùng..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -289,36 +356,35 @@ export default function Users() {
               <th>Liên hệ</th>
               <th>Vai trò</th>
               <th>Trạng thái</th>
-              <th style={{ textAlign: 'right' }}>Thao tác</th>
+              <th className="admin-table-actions-head">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(userItem => {
               const role = getRoleName(userItem);
               const active = isActiveUser(userItem);
-              const isExpanded = detailId === userItem.id;
               const isCurrentUser = String(currentUser?.userId) === String(userItem.id);
 
               return (
-                <tr key={userItem.id} style={isExpanded ? { background: 'var(--admin-bg, #fafafa)' } : undefined}>
+                <tr key={userItem.id}>
                   <td>
                     <div className="admin-product-cell">
-                      <div className="admin-avatar" style={{ width: 40, height: 40, borderRadius: '50%' }}>
+                      <div className="admin-avatar admin-avatar--table">
                         {initials(getDisplayName(userItem))}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 500, color: 'var(--admin-black)' }}>{getDisplayName(userItem)}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--admin-muted)' }}>@{userItem.userName} · ID #{userItem.id}</div>
+                        <div className="admin-table-primary">{getDisplayName(userItem)}</div>
+                        <div className="admin-table-secondary">@{userItem.userName} · ID #{userItem.id}</div>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <div style={{ color: 'var(--admin-black)' }}>{getUserEmail(userItem) || '-'}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--admin-muted)' }}>{getUserPhone(userItem) || '-'}</div>
+                    <div className="admin-table-primary">{getUserEmail(userItem) || '-'}</div>
+                    <div className="admin-table-secondary">{getUserPhone(userItem) || '-'}</div>
                   </td>
                   <td>
-                    <span className="admin-badge" style={role === 'ROLE_ADMIN' ? { background: 'var(--admin-black)', color: 'white', borderColor: 'var(--admin-black)' } : undefined}>
-                      {role === 'ROLE_ADMIN' ? 'Quản trị viên' : 'Khách hàng'}
+                    <span className={`admin-badge ${role === 'ROLE_ADMIN' ? 'admin-role-badge' : ''}`}>
+                      {role === 'ROLE_ADMIN' ? 'Quản trị viên' : 'Người dùng'}
                     </span>
                   </td>
                   <td>
@@ -326,18 +392,16 @@ export default function Users() {
                       {active ? 'Đang hoạt động' : 'Đã khóa'}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <td className="admin-table-actions-cell">
+                    <div className="admin-action-group">
                       <button
-                        className="admin-btn admin-btn-outline"
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
-                        onClick={() => setDetailId(isExpanded ? null : userItem.id)}
+                        className="admin-btn admin-btn-outline admin-btn--small"
+                        onClick={() => setSelectedUser(userItem)}
                       >
-                        {isExpanded ? 'Đóng' : 'Chi tiết'}
+                        Chi tiết
                       </button>
                       <button
-                        className="admin-btn admin-btn-outline"
-                        style={{ padding: '6px 12px', fontSize: '12px', borderColor: active ? 'var(--admin-danger)' : 'var(--admin-border)', color: active ? 'var(--admin-danger-text)' : 'var(--admin-black)' }}
+                        className={`admin-btn admin-btn--small ${active ? 'admin-btn-danger' : 'admin-btn-outline'}`}
                         onClick={() => handleToggleStatus(userItem)}
                         disabled={updatingId === userItem.id || isCurrentUser}
                         title={isCurrentUser ? 'Không thể khóa tài khoản đang đăng nhập' : undefined}
@@ -345,31 +409,6 @@ export default function Users() {
                         {updatingId === userItem.id ? 'Đang lưu...' : active ? 'Khóa' : 'Mở khóa'}
                       </button>
                     </div>
-                    {isExpanded && (
-                      <div className="admin-inline-detail" style={{ textAlign: 'left', marginTop: '12px', padding: '12px', background: '#fafafa', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
-                        <div><strong>ID:</strong> #{userItem.id}</div>
-                        <div><strong>Tên đăng nhập:</strong> {userItem.userName}</div>
-                        <div><strong>Họ tên:</strong> {getDisplayName(userItem)}</div>
-                        <div><strong>Email:</strong> {getUserEmail(userItem) || '-'}</div>
-                        <div><strong>Điện thoại:</strong> {getUserPhone(userItem) || '-'}</div>
-                        <div><strong>Vai trò:</strong> {role === 'ROLE_ADMIN' ? 'Quản trị viên' : 'Khách hàng'}</div>
-                        <div><strong>Trạng thái:</strong> {active ? 'Hoạt động' : 'Đã khóa'}</div>
-                        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <strong style={{ fontSize: '0.85rem' }}>Thay đổi vai trò:</strong>
-                          <select
-                            value={role}
-                            onChange={(e) => handleRoleChange(userItem.id, e.target.value)}
-                            className="admin-filter-select"
-                            style={{ padding: '4px 8px', fontSize: '11px', height: '28px', width: 'auto', margin: 0 }}
-                            disabled={isCurrentUser}
-                            aria-label="Thay đổi vai trò"
-                          >
-                            <option value="ROLE_USER">Khách hàng</option>
-                            <option value="ROLE_ADMIN">Quản trị viên</option>
-                          </select>
-                        </div>
-                      </div>
-                    )}
                   </td>
                 </tr>
               );
@@ -383,9 +422,9 @@ export default function Users() {
           onPageChange={setCurrentPage}
         />
         {filtered.length === 0 && loading === false && (
-          <div className="admin-empty" style={{ borderTop: '1px solid var(--admin-border)' }}>
+          <div className="admin-empty">
             <h3>Không có tài khoản phù hợp</h3>
-            <p>Tài khoản khách hàng và quản trị viên sẽ hiển thị tại đây.</p>
+            <p>Tài khoản người dùng và quản trị viên sẽ hiển thị tại đây.</p>
           </div>
         )}
       </div>
